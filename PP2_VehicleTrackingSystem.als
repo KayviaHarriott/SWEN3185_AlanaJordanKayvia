@@ -127,8 +127,6 @@ fact eachVehicleOwnEngine{
 // 	all disj b1, b2: Battery | b1.status != b2.status
 // }
 
-//English - Each Battery has a status associated with it
-
 
 //English - Each Battery is associated with a vehicle
 
@@ -141,7 +139,6 @@ fact trackingDeviceOnIfVehicleBatteryOn{
 		v.battery.status = Off implies v.tracker.status = Off
 		}
 }
-
 
 //English - Each battery must be associated with only one device i.e.
 //Vehicle, Tracking Device
