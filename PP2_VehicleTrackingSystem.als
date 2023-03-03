@@ -10,7 +10,6 @@ important scenarios for your system).
 --Alana Thompson
 --Jordan Earle
 --Kayvia Harriott
-
 module vehicle_tracking_system
 
 sig Vehicle{
@@ -20,8 +19,9 @@ sig Vehicle{
 }
 
 sig Engine{
-	
+	status: Status
 }
+
 sig TrackingDevice{
 	track_dev_battery: Battery,
 	sim_card: SimCard,
@@ -34,13 +34,11 @@ sig CellTower{
 	--coordinates: Longitude -> Latitude
 }
 
---sig Longitude, Latitude
-
 sig Coordinate{
-	-- Longtitude, Laitude
+	coordinate: Longitude -> Latitude
 }
 
-
+sig Longitude, Latitude{}
 
 sig SimCard{
 	imei: IMEI,
@@ -55,30 +53,52 @@ sig Battery{
 
 sig Geofence{}
 
-//abstract sig BatteryStatus{}
-//one sig On, Off extends BatteryStatus {}
---I think this should be status instead and used for both battery
--- and engine, but unsure, ask Ms how to model with abstract
-
-// abstract sig CoordinateT{}
-// one sig Longitude, Latitude extends Status {}
-
 abstract sig Status{}
-one sig On, Off extends Status {}
+sig On, Off extends Status {}
 
 abstract sig TimeInterval{}
-one sig Few, Often, Persistent extends TimeInterval {}
+sig Few, Often, Persistent extends TimeInterval {}
 
 abstract sig Weather {}
-one sig Good, Suitable, Bad, Unsuitable extends Weather {}
+sig GoodWeather, SuitableWeather, BadWeather, UnsuitableWeather extends Weather {}
 
+abstract sig Location {}
+sig In_Range, Suitable, Out_Of_Range extends Location {}
 
-pred a_simple_vehicle_tracking_system[
+pred sanityCheck[
 ]{
-	#Vehicle > 3
-	#SimCard > 3
+	// #Vehicle > 3
+	// #SimCard > 3
+	// #TrackingDevice > 2
+	// some Vehicle.tracker
+	some Vehicle
+	some Engine
+	some TrackingDevice
+	some CellTower
+	some Coordinate
+	some Location
+	some SimCard
+	some Geofence
+	some Vehicle.tracker
+	some v: Vehicle | v.tracker.status = On
+	some v: Vehicle | v.tracker.status = Off
 
-} run a_simple_vehicle_tracking_system for 7 expect 1
+} run sanityCheck for 7 expect 1
+
+/**Constraints/Invariants(?)**/
+
+//English - The tracker must be configured correctly to send signals i.e.
+//the tracker is attached to a vehicle engine and vehicle battery
+//and must have a network registered sim card
+
+//English - To send a signal related to the vehicle engine's the tracker must
+//be connected to the engine
+
+//English - The tracker must only be able to send a signal that is
+//equivalent/same as the engine's state i.e. 'On' or 'Off'
+
+//English - The tracking device must be 'in-range' or 'suitable' to a cell
+//tower to be able to send and receive signals to and from the cell tower
 
 
 //English - Each SimCard has a unique IMEI
@@ -96,8 +116,14 @@ fact eachVehicleOwnBattery{
 	all disj v1, v2: Vehicle | v1.battery != v2.battery
 }
 
+//English - Each Vehicle has their own Engine
+fact eachVehicleOwnEngine{
+	all disj v1, v2: Vehicle | v1.engine != v2.engine
+}
+
 //English - Each Battery has their own Status	
-// fact eachBatteryHasOwnStatus{
+//fact eachBatteryHasOwnStatus{
+//	//When I run this, it keeps solving and never ends
 // 	all disj b1, b2: Battery | b1.status != b2.status
 // }
 
@@ -109,7 +135,25 @@ fact eachVehicleOwnBattery{
 
 //English - The tracking devices' battery status cannot be on
 //if the vehicle battery status is off
+fact trackingDeviceOnIfVehicleBatteryOn{
+	all v: Vehicle | {
+		v.battery.status = On implies v.tracker.status = On
+		v.battery.status = Off implies v.tracker.status = Off
+		}
+}
 
+
+//English - Each battery must be associated with only one device i.e.
+//Vehicle, Tracking Device
+fact allBatteryAssociatedWithOneDevice{
+	all t: TrackingDevice, v: Vehicle |
+		v.battery != t.track_dev_battery
+}
+
+//English - Each vehicle battery is unique
+fact eachVehicleBatteryUnique{
+	all disj v1, v2: TrackingDevice | v1.track_dev_battery != v2.track_dev_battery
+}
 
 
 assert simCardUniqueIMEI{
@@ -153,5 +197,8 @@ optimal, perfect scenario
 
 --should battery be specified for both the vehicle and tracking device, while including the engine and tracking device itself
 
+--Ask Ms how to represent coordinates, should it be a set?
+--or
+--coordinates: Longitude -> Latitude
 
 
