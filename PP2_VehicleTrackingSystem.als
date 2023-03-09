@@ -23,19 +23,20 @@ sig Engine{
 }
 
 sig TrackingDevice{
-	track_dev_battery: Battery,
+	track_dev_battery: Battery, --look into the strength of this battery
 	sim_card: SimCard,
-	status: Status
+	status: Status,
+	communication: Communication -> CellTower
+}
+
+sig OtherDevice{
+	range: Location -> TrackingDevice,
+	communication: Communication -> CellTower
 }
 
 sig CellTower{
-	coordinates: set Coordinate --I think this may be a set, unsure
-	--or
-	--coordinates: Longitude -> Latitude
-}
-
-sig Coordinate{
-	coordinate: Longitude -> Latitude
+	signal_strength: Bar,
+	communication: Communication -> (TrackingDevice+OtherDevice)
 }
 
 sig Longitude, Latitude{}
@@ -48,22 +49,29 @@ sig SimCard{
 sig IMEI, SerialNumber{}
 
 sig Battery{
-	status: Status
+	status: Status --dont need since engine being on implies that the battery on
 }
 
 sig Geofence{}
 
+abstract sig Communication{}
+one sig EDGE, Com_3G, Com_4G, LTE extends Communication{}
+
 abstract sig Status{}
-sig On, Off extends Status {}
+one sig On, Off extends Status {}
+
+abstract sig Bar{}
+one sig Level_1, Level_2, Level_3, Level_4 {}
 
 abstract sig TimeInterval{}
-sig Few, Often, Persistent extends TimeInterval {}
+one sig Few, Often, Persistent extends TimeInterval {}
 
 abstract sig Weather {}
-sig GoodWeather, SuitableWeather, BadWeather, UnsuitableWeather extends Weather {}
+//one sig GoodWeather, SuitableWeather, BadWeather, UnsuitableWeather extends Weather {}
+one sig Rain, Fog, Cloudy, Thunderstorm, Windy, Sunny, ModerateTemperature, Clear extends Weather{}
 
 abstract sig Location {}
-sig In_Range, Suitable, Out_Of_Range extends Location {}
+one sig Best, Acceptable, Low, Out_Of_Range extends Location {}
 
 pred sanityCheck[
 ]{
@@ -75,13 +83,16 @@ pred sanityCheck[
 	some Engine
 	some TrackingDevice
 	some CellTower
-	some Coordinate
 	some Location
 	some SimCard
 	some Geofence
 	some Vehicle.tracker
 	some v: Vehicle | v.tracker.status = On
 	some v: Vehicle | v.tracker.status = Off
+	some range
+	some TrackingDevice.communication
+	some CellTower.communication
+	some OtherDevice.communication
 
 } run sanityCheck for 7 expect 1
 
@@ -120,6 +131,35 @@ fact eachVehicleOwnBattery{
 fact eachVehicleOwnEngine{
 	all disj v1, v2: Vehicle | v1.engine != v2.engine
 }
+
+//English - If a device communicates with a cell tower with a particular 
+//wireless communication, then the cell tower must communicate with the 
+//same wireless communication and vice versa
+
+fact sameWirelessCommunicationBetweenDevices{
+	--tracking device , other device, cell tower , wireless communication
+
+all d:TrackingDevice, o:OtherDevice, c:CellTower, com:Communication | 
+
+	--If a tracking device or other device is in the relation communication
+	(com->c in d.communication implies com->d in c.communication )
+	and 
+	(com->c in o.communication implies com->d in c.communication)
+	
+	
+
+	--then the cell tower is in the same relation of communication
+
+
+	--TrackingDevice, communication ------ Communication -> CellTower
+	--OtherDevice, communication ------ Communication -> Celltower
+	--CellTower, communication ----- Communication -> (TrackingDevice+OtherDevice)
+
+
+
+}
+
+
 
 //English - Each Battery has their own Status	
 //fact eachBatteryHasOwnStatus{
