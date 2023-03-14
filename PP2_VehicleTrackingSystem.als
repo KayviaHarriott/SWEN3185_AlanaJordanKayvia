@@ -87,7 +87,6 @@ pred sanityCheck[
 
 /**Constraints/Invariants(?)**/
 
-
 //English - Every vehicle has a unique engine
 fact EachVehicleUniqueEngine{
 	all disj v1, v2: Vehicle | v1 != v2 implies v1.engine != v2.engine
@@ -96,11 +95,6 @@ fact EachVehicleUniqueEngine{
 //English - Each tracking device must have a unique vehicle
 fact EachTrackingDeviceMustHaveAUniqueVehicle{
 	all disj v1, v2: Vehicle | v1 != v2 implies v1.tracker != v2.tracker
-}
-
-//English - Each tracking device must belong to only one vehicle
-fact EachTrackingDeviceMustHaveAUniqueVehicle{
-	//all t1: TrackingDevice | t1 in Vehicle.tracker 
 }
 
 //English - All cell towers must have a range to tracking devices
@@ -120,11 +114,12 @@ fact AllCellTowersHaveCommunicationTypeToTrackingDevice{
 //English - A tracking device must only communicate with the cell tower in a specific
 //type of communication based on its location to the cell tower i.e. Best - 4G and LTE,
 //Acceptable - 3G, 4G, and LTE, Low - 3G and Edge and Out_Of_Range - None
-fact CommunicationRelationToLocation {
-//	all t1: TrackingDevice, com: Communication, cell: CellTower
-//		| com -> cell in t1.communicationType
+--EDGE, LTE, 3G, 4G
+fact CommunicationRelationToLocationOutOfRange {
+	//range: Location -> CellTower
+	//communicationType: Communication -> CellTower
+	//maybe need disjoint
 }
-
 
 fact CommunicationRelationToWeather {
 	
@@ -138,7 +133,10 @@ fact uniqueTrackerBattery{
 //English - The tracking device may only communicate with a 'other device' if 
 //the tracking device is Out_Of_Range to a cell tower.
 fact OnlyCommunicateWithOtherDeviceWhenOutofRange{
-
+	all t1: TrackingDevice, oth: OtherDevice, loc: Location, cell: CellTower |
+		loc -> oth in t1.connection 
+			implies Out_Of_Range -> cell in t1.range and None -> cell in t1.communicationType
+	--If we specify the other fact correctly, we won't need the 'None -> cell ...'
 }
 
 
@@ -155,7 +153,15 @@ pred ScenarioOne[]{
 	some TrackingDevice.range 
 	some GoodWeather
 	some TrackingDevice.communicationType
-	some TrackingDevice.range
+	//some TrackingDevice.range
+	//some t1: TrackingDevice | Best -> CellTower in t1.range
+//	some t1: TrackingDevice, l1: Location, c1: CellTower | l1 -> c1 in t1.range and l1 = Best
+//	some t1: TrackingDevice, l1: Location, c1: CellTower | l1 -> c1 in t1.range and l1 = Acceptable
+//	some t1: TrackingDevice, l1: Location, c1: CellTower | l1 -> c1 in t1.range and l1 = Low
+//	some t1: TrackingDevice, l1: Location, c1: CellTower | l1 -> c1 in t1.range and l1 = Out_Of_Range
+
+	//some Out_Of_Range.communicationType
+	
 
 } run ScenarioOne for 7 expect 1
 
@@ -170,6 +176,17 @@ is bad resulting in poor communication
 
 /*4 - The tracking device is out of range of cell tower, so it interacts with the other device,
 */
+pred ScenarioFour[]{
+	some OtherDevice
+	some connection
+	#Vehicle > 1 --some Vehicle
+	#TrackingDevice > 1 --some TrackingDevice
+	#CellTower > 1 --some CellTower
+	some TrackingDevice.range 
+	some GoodWeather
+	some TrackingDevice.communicationType
+
+} run ScenarioFour for 7 expect 1
 
 
 /*5 - The tracking device is near a cell tower, outside of it's geofence, weather condition is good
@@ -183,15 +200,3 @@ The tracking device supports LTE
 // - weather conditions
 // - cell towers
 // - communication type( 3G, LTE, 4G)
-
-
-//To Do or Discuss
-/*
-1. Should the communicationType only exist once between a tracking
-device and the cell tower? Can it only communicate with one cell tower 
-at a time? If so how do we say that, or does this relation show that?
-
-
-
-
-*/
