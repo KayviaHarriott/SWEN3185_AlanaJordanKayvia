@@ -14,7 +14,7 @@ module vehicle_tracking_system
 
 sig Vehicle{
 	tracker: lone TrackingDevice,
-	battery: Battery,
+	battery: lone Battery,
 	engine: Engine
 }
 
@@ -24,14 +24,14 @@ sig Engine{
 
 sig TrackingDevice{
 	track_dev_battery: Battery, --look into the strength of this battery
-	sim_card: SimCard,-- say it's implied that it has the sim card already in it so remove it//Ask Ms 
+	--sim_card: SimCard,-- say it's implied that it has the sim card already in it so remove it//Ask Ms 
 	status: Status,
 	communicationType: Communication -> CellTower,
 	range: Location -> CellTower,
 	connection: Location -> OtherDevice, -- only populated if the raneg is OutOfRange
-	geofences: Geofence, -- all the geofences of the user
-	activeGeofence: lone Geofence,
-	recentGeofence: lone Geofence,
+	geofences: Location -> Location, -- all the geofences of the user --Ms: Location -> Location, how do we say it's out the boundary
+	activeGeofence: geofences,
+	recentGeofence: geofences,
 	alert: Alert -> (activeGeofence+recentGeofence) --States: you are alerted once entered or left
 	-- entered disappears when you have left and left disappears when you enter a new
 	
@@ -50,21 +50,23 @@ sig CellTower{
 	signal_strength: Bar
 }
 
-sig Longitude, Latitude{}
+--sig Longitude, Latitude{}
 
-sig SimCard{
+--sig SimCard{
 	--imei: IMEI, -- remove but mention in the document
 	--ser_num: SerialNumber
-}  
+--}  
 
 --sig IMEI, SerialNumber{}
 
 sig Battery{}
 
-sig Geofence{}
+--sig Geofence{}
+--Geofence should be a relation, that maps location to location and that can be used to 
+--draw a graph
 
 abstract sig Communication{}
-one sig EDGE, Com_3G, Com_4G, LTE extends Communication{} --MK: does this affect 
+one sig None, EDGE, Com_3G, Com_4G, LTE extends Communication{} --MK: does this affect 
 -- signal strength of Cell Tower? and if so... based on Cell Tower, signal_strength
 -- would be better in this sig
 -- if signal_strength is affected by distance from tower and communication type then
@@ -83,6 +85,7 @@ one sig Level_1, Level_2, Level_3, Level_4 extends Bar{}
 abstract sig Weather {}
 one sig GoodWeather, SuitableWeather, BadWeather, UnsuitableWeather extends Weather {}
 --one sig Rain, Fog, Cloudy, Thunderstorm, Windy, Sunny, ModerateTemperature, Clear extends Weather{}
+--
 
 abstract sig Location {}
 one sig Best, Acceptable, Low, Out_Of_Range extends Location {}
@@ -98,8 +101,8 @@ pred sanityCheck[
 	some TrackingDevice
 	some CellTower
 	some Location
-	some SimCard
-	some Geofence
+	--some SimCard
+	//some Geofence
 	some Vehicle.tracker
 	some v: Vehicle | v.tracker.status = On
 	some v: Vehicle | v.tracker.status = Off
@@ -111,6 +114,85 @@ pred sanityCheck[
 } run sanityCheck for 7 expect 1
 
 /**Constraints/Invariants(?)**/
+
+//English - Every vehicle has a unique engine
+fact EachVehicleUniqueEngine{
+	all disj v1, v2: Vehicle | v1 != v2 implies v1.engine != v2.engine
+}
+
+//English - Each tracking device must have a unique vehicle
+fact EachTrackingDeviceMustHaveAUniqueVehicle{
+	all disj v1, v2: Vehicle | v1 != v2 implies v1.tracker != v2.tracker
+}
+
+//English - 
+fact CommunicationRelationToLocation {
+	// all t1: TrackingDevice, l1: Location, c1: CellTower, com1: Communication |
+	// 	(l1 -> c1 in t1.range and l1 = Best) implies 
+	// 			( com1 -> c1 in t1.communicationType and com1 = (Com_4G+LTE))
+		
+	// all t1: TrackingDevice, l1: Location, c1: CellTower, com1: Communication |
+	// 	(l1 -> c1 in t1.range and l1 = Acceptable) implies 
+	// 			( com1 -> c1 in t1.communicationType and com1 = (Com_3G+Com_4G+LTE))
+		
+	// all t1: TrackingDevice, l1: Location, c1: CellTower, com1: Communication |
+	// 	(l1 -> c1 in t1.range and l1 = Low) implies 
+	// 			( com1 -> c1 in t1.communicationType and com1 = (Com_3G+EDGE))
+
+	all t1: TrackingDevice, l1: Location, c1: CellTower, com1: Communication |
+		((l1 -> c1 in t1.range and l1 = Best) implies 
+				( com1 -> c1 in t1.communicationType and com1 = (LTE)))
+
+	and 
+
+		((l1 -> c1 in t1.range and l1 = Acceptable) implies 
+				( com1 -> c1 in t1.communicationType and com1 = (Com_4G)))
+		
+	and
+		((l1 -> c1 in t1.range and l1 = Low) implies 
+				( com1 -> c1 in t1.communicationType and com1 = (Com_3G)))
+	
+	// and 
+	// 	((l1 -> c1 in t1.range and l1 = Out_Of_Range) implies 
+	// 			( com1 -> c1 in t1.communicationType and com1 = (None)))
+		
+	// all t1: TrackingDevice, l1: Location, c1: CellTower|
+	// 	(l1 -> c1 in t1.range and l1 = Out_Of_Range) implies 
+	// 			( com1 -> c1 in t1.communicationType and com1 = (EDGE))
+
+
+
+	--Best, 4G and LTE
+
+	-- Acceptable, 3G, 4G, and LTE
+
+	-- Low, 3G, Edge
+
+	--Out of Range, none 
+}
+
+//look at this Kayvia
+fact CommunicationRelationToLocation {
+	all t1: TrackingDevice, l1: Location, c1: CellTower, com1: Communication |
+		(l1 -> c1 in t1.range and l1 = Best) implies 
+				( com1 -> c1 in t1.communicationType and com1 = (Com_4G+LTE))
+	and
+
+		(l1 -> c1 in t1.range and l1 = Acceptable) implies 
+				( com1 -> c1 in t1.communicationType and com1 = (Com_3G+Com_4G+LTE))
+	and
+		(l1 -> c1 in t1.range and l1 = Low) implies 
+				( com1 -> c1 in t1.communicationType and com1 = (Com_3G+EDGE))
+	and
+		(l1 -> c1 in t1.range and l1 = Out_Of_Range) implies 
+				( com1 -> c1 in t1.communicationType and com1 = (none))
+}
+
+fact CommunicationRelationToWeather {
+
+}
+
+
 
 //English - The tracker must be configured correctly to send signals i.e.
 //the tracker is attached to a vehicle engine and vehicle battery
@@ -125,6 +207,11 @@ pred sanityCheck[
 //English - The tracking device must be 'in-range' or 'suitable' to a cell
 //tower to be able to send and receive signals to and from the cell tower
 
+
+//English - Each tracker has a unique battery
+fact uniqueTrackerBattery{
+	all disj t1, t2: TrackingDevice | t1.track_dev_battery != t2.track_dev_battery
+}
 
 //English - Each SimCard has a unique IMEI
 // fact uniqueIMEIForSimCard{
@@ -217,34 +304,61 @@ pred sanityCheck[
 
 // }check simCardUniqueSerialNumber for 7 expect 0
 
+fact OnlyCommunicateWithOtherDeviceWhenOutofRange{
+	-- tracking device only with 
+}
 
 
 /**/
 --Preds Scenarios
 
-/*1 - A scenario where battery is on, tracking device is working
-optimal, perfect scenario
+/*1 - The tracking device is far away from the cell tower, it's communication is 4G,
+and the weather condition is good
+*/
+pred ScenarioOne[]{
+
+	#Vehicle > 1 --some Vehicle
+	#TrackingDevice > 1 --some TrackingDevice
+	#CellTower > 1 --some CellTower
+	some TrackingDevice.range 
+	some GoodWeather
+	some TrackingDevice.communicationType
+
+
+} run ScenarioOne for 7 expect 1
+
+/*2 - Multiple cell towers in a geographic location and at least one tower must be able to identify that
+a tracking device is near a cell tower
 */
 
 
-/*2 - A scenerio where the weather is bad
-
-*/
-
-/*3 - A scenario where the battery and the engine status is off
+/*3 - The tracking device is near a cell tower, inside the geofence but the weather condition
+is bad resulting in poor communication
 
 
-/*4 - A scenario where the tracking device is off and the engine status is on
-
+/*4 - The tracking device is out of range of cell tower, so it interacts with the other device,
 */
 
 
-/*5 
-
+/*5 - The tracking device is near a cell tower, outside of it's geofence, weather condition is good
+The tracking device supports LTE
 */
+
+
+
+// - Tracking device
+// - geofence
+// - weather conditions
+// - cell towers
+// - communication type( 3G, LTE, 4G)
+
+
+
+
 
 //Questions to Ask Ms
 --ask Ms if we should use facts and call preds or if we should use facts alone
+--up to us
 
 --should battery be specified for both the vehicle and tracking device, while including the engine and tracking device itself
 
