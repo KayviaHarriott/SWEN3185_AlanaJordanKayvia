@@ -96,7 +96,6 @@ fact EachVehicleUniqueEngine{
 //English - Each tracking device must have a unique vehicle
 fact EachTrackingDeviceMustHaveAUniqueVehicle{
 	all disj v1, v2: Vehicle | v1 != v2 implies v1.tracker != v2.tracker
-
 }
 
 //English - Each tracking device must belong to only one vehicle
