@@ -13,7 +13,7 @@ important scenarios for your system).
 module vehicle_tracking_system
 
 sig Vehicle{
-	tracker: lone TrackingDevice,
+	tracker: TrackingDevice,
 	battery: lone Battery,
 	engine: Engine
 }
@@ -87,6 +87,7 @@ pred sanityCheck[
 
 /**Constraints/Invariants(?)**/
 
+
 //English - Every vehicle has a unique engine
 fact EachVehicleUniqueEngine{
 	all disj v1, v2: Vehicle | v1 != v2 implies v1.engine != v2.engine
@@ -95,7 +96,14 @@ fact EachVehicleUniqueEngine{
 //English - Each tracking device must have a unique vehicle
 fact EachTrackingDeviceMustHaveAUniqueVehicle{
 	all disj v1, v2: Vehicle | v1 != v2 implies v1.tracker != v2.tracker
+
 }
+
+//English - Each tracking device must belong to only one vehicle
+fact EachTrackingDeviceMustHaveAUniqueVehicle{
+	all t1: TrackingDevice | t1 in Vehicle.tracker
+}
+
 
 //English - A tracking device must only communicate with the cell tower in a specific
 //type of communication based on its location to the cell tower i.e. Best - 4G and LTE,
@@ -127,14 +135,12 @@ fact OnlyCommunicateWithOtherDeviceWhenOutofRange{
 and the weather condition is good
 */
 pred ScenarioOne[]{
-
 	#Vehicle > 1 --some Vehicle
 	#TrackingDevice > 1 --some TrackingDevice
 	#CellTower > 1 --some CellTower
 	some TrackingDevice.range 
 	some GoodWeather
 	some TrackingDevice.communicationType
-
 
 } run ScenarioOne for 7 expect 1
 
