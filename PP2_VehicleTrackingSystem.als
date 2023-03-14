@@ -101,19 +101,34 @@ fact EachTrackingDeviceMustHaveAUniqueVehicle{
 
 //English - Each tracking device must belong to only one vehicle
 fact EachTrackingDeviceMustHaveAUniqueVehicle{
-	all t1: TrackingDevice | t1 in Vehicle.tracker
+	//all t1: TrackingDevice | t1 in Vehicle.tracker 
 }
 
+//English - All cell towers must have a range to tracking devices
+//and the relation must only exist once
+fact AllCellTowersHaveRangeToTrackingDevice{
+	all t1: TrackingDevice,  c1: CellTower | one l1: Location
+		| l1 -> c1 in t1.range
+}
+
+//English - All cell towers must have a communicationType to tracking devices
+//and the relation must only exist once
+fact AllCellTowersHaveCommunicationTypeToTrackingDevice{
+	all t1: TrackingDevice, c1: CellTower | one com: Communication
+		| com -> c1 in t1.communicationType
+}
 
 //English - A tracking device must only communicate with the cell tower in a specific
 //type of communication based on its location to the cell tower i.e. Best - 4G and LTE,
 //Acceptable - 3G, 4G, and LTE, Low - 3G and Edge and Out_Of_Range - None
 fact CommunicationRelationToLocation {
+//	all t1: TrackingDevice, com: Communication, cell: CellTower
+//		| com -> cell in t1.communicationType
 }
 
 
 fact CommunicationRelationToWeather {
-
+	
 }
 
 //English - Each tracker has a unique battery
@@ -141,6 +156,7 @@ pred ScenarioOne[]{
 	some TrackingDevice.range 
 	some GoodWeather
 	some TrackingDevice.communicationType
+	some TrackingDevice.range
 
 } run ScenarioOne for 7 expect 1
 
@@ -168,3 +184,15 @@ The tracking device supports LTE
 // - weather conditions
 // - cell towers
 // - communication type( 3G, LTE, 4G)
+
+
+//To Do or Discuss
+/*
+1. Should the communicationType only exist once between a tracking
+device and the cell tower? Can it only communicate with one cell tower 
+at a time? If so how do we say that, or does this relation show that?
+
+
+
+
+*/
