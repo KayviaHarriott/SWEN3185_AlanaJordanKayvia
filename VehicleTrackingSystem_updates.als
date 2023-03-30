@@ -42,6 +42,7 @@ sig OtherDevice{
 }
 
 sig CellTower{
+	originalCommunication: Communication
 }
 
 sig Battery{}
@@ -55,7 +56,7 @@ one sig On, Off extends Status {}
 abstract sig Bar{}
 one sig Level_0, Level_1, Level_2, Level_3, Level_4 extends Bar{}
 
-abstract sig Weather {} --affects communication
+abstract sig Weather {}
 one sig GoodWeather, SuitableWeather, BadWeather, UnsuitableWeather extends Weather {}
 
 abstract sig Location {}
@@ -71,6 +72,12 @@ pred sanityCheck[
 	some CellTower
 	some Location
 	some Vehicle.tracker
+	--some Vehicle.tracker.status == Off
+	--one t: TrackingDevice | t.status = Off
+	some t: TrackingDevice |
+		t.weather = BadWeather 
+		&& ran[t.communicationType].originalCommunication = LTE --> com 3g
+
 } run sanityCheck for 7 expect 1
 
 /**Constraints/Invariants(?)**/
@@ -103,7 +110,8 @@ fact AllTrackingDeviceHaveOneRange{
 //English - If a tracking device is off then it should not have a communication
 //type to the cell tower
 fact NoCommunicationTypeIfTrackingDeviceOff {
-	all t1: TrackingDevice |  t1.status = Off implies no t1.communicationType
+	--all t1: TrackingDevice |  t1.status = Off implies no t1.communicationType
+	all t1: TrackingDevice | t1.status = Off implies dom[t1.communicationType] = None 
 
 }
 
@@ -113,6 +121,10 @@ fact NoCommunicationTypeIfTrackingDeviceOff {
 
 }
 
+//English - a recent geofence triggers an alert
+fact AlertIfRecentGeofence{
+	all t1: TrackingDevice | some t1.recentGeofence implies one t1.alert
+}
 
 //English - A tracking device must only communicate with the cell tower in a specific
 //type of communication based on its location to the cell tower i.e. Best - 4G and LTE,
@@ -141,25 +153,6 @@ fact CommunicationRelationToLocationOutOfRange {
 
 }
 
---that weather affects the communication type
-// abstract sig Weather {} --affects communication
-// one sig GoodWeather, SuitableWeather, BadWeather, UnsuitableWeather extends Weather {}
-
-// abstract sig Communication{}
-// one sig None, EDGE, Com_3G, Com_4G, LTE extends Communication{} 
-
-fact WeatherAffectingCommunication{
-	--Badweather + Edge --> becomes None
-	--Badweather + Com_3G --> becomes Edge
-	--Badweather + Com_4G --> becomes 3G
-	--Badweather + LTE --> becomes 4G
-
-	--UnsuitableWeather + Edge --> becomes None
-	--UnsuitableWeather + Com_3G --> becomes None
-	--UnsuitableWeather + Com_4G --> becomes Edge
-	--UnsuitableWeather + LTE --> becomes 3G
-}
-
 //English - Each tracker has a unique battery - good
 fact uniqueTrackerBattery{
 	all disj t1, t2: TrackingDevice | t1.track_dev_battery != t2.track_dev_battery
@@ -173,102 +166,38 @@ fact OnlyCommunicateWithOtherDeviceWhenOutofRange{ --changed due to updated code
 			implies None -> cell = t1.communicationType
 }
 
-
-/**/
---Preds Scenarios
-/*1
-The tracking device is far away from the cell tower which means there are no CommunicationTypes available
-and automatically create a connection with another device
-*/
-pred ScenarioOne[t1: TrackingDevice]{
-	gt[#Vehicle,1] 
-	gt[#TrackingDevice,1]
-	gt[#CellTower,1] 
-	
-	dom[t1.range] = Level_0
-	
-} run ScenarioOne for 3 expect 1
-
-/*2
-Multiple cell towers in a geographic location and at least one tower must be able to identify that
-a tracking device is near a cell tower.
-*/
-pred ScenarioTwo[c: CellTower]{
-	gt[#Vehicle,1]
-	gt[#CellTower,1]
-	some TrackingDevice.communicationType.c 
-} run ScenarioTwo for 7 expect 1
-
-/*3
-The tracking device is near a cell tower,
-but the weather condition is bad resulting in poor or okay experience.
-*/
-pred ScenarioThree[t: TrackingDevice]{
-	dom[t.range] = Level_3
-	t.weather = UnsuitableWeather
-
-} run ScenarioThree for 7 expect 1
-
-/*4 - Vehicle has left geofence and should have an alert 
-*/
-pred ScenarioFour[t: TrackingDevice]{
-	some t.recentGeofence
-
-} run ScenarioFour for 7 expect 1
-
-/*5 - The tracking device is near a cell tower, outside of it's geofence, 
-weather condition is good and the tracking device supports LTE
-*/
-pred ScenarioFive[t: TrackingDevice]{
-	dom[t.range] = Level_4
-	some t.recentGeofence
-	t.weather = GoodWeather
-
-} run ScenarioFive for 7 expect 1
-
-
-
----------
---Things to discuss or note with Ms
---
---#1
-//English - If a tracking device is off then it should not have a communication
-//type to the cell tower
-/*fact NoCommunicationTypeIfTrackingDeviceOff {
-	--all t1: TrackingDevice |  t1.status = Off implies no t1.communicationType
-	--Note: This should've been 
-	all t1: TrackingDevice | t1.status = Off implies dom[t1.communicationType] = None 
-}*/
-
-
---#2, in scenario One, the other device isn't actually being created and connected to the tracker
---why?
-/*
 fact AutomaticallyCommunicateWithOtherDevice{
-	all t1: TrackingDevice | dom[t1.range] = Level_0 implies one t1.connection --this works
-	--all t1: TrackingDevice | dom[t1.range] = Level_0 implies #t1.connection > 0 --this works
+	--all t1: TrackingDevice, loc: Location, oth: OtherDevice |
+		--(dom[t1.range] = Level_0 && dom[t1.communicationType] = None)
+			--	implies loc -> oth in t1.connection	
+	--all t1: TrackingDevice-- | --, loc: Location, othD: OtherDevice 
+		--| Location -> OtherDevice in t1.connection
+	--all t1: TrackingDevice | dom[t1.range] = Level_0 implies one t1.connection
+	all t1: TrackingDevice | dom[t1.range] = Level_0 implies #t1.connection > 0
 }
-pred ScenarioOne[t1: TrackingDevice]{
-	dom[t1.range] = Level_0
-	
-} run ScenarioOne for 3 expect 1 */
+//
+//fact WeatherAffectingCommunication{
+//	all t1: TrackingDevice |
+//		(dom[t1.communicationType] = EDGE && t1.weather = BadWeather)
+//			=> (dom[t1.communicationType] = None)
+//	all t1: TrackingDevice |
+//		(dom[t1.communicationType] = Com_3G && t1.weather = BadWeather)
+//			=> (dom[t1.communicationType] = EDGE)
+//	all t1: TrackingDevice |
+//		(dom[t1.communicationType] = Com_4G && t1.weather = BadWeather)
+//			=> (dom[t1.communicationType] = Com_3G)
+//
+//	--Badweather + Edge --> becomes None
+//	--Badweather + Com_3G --> becomes Edge
+//	--Badweather + Com_4G --> becomes 3G
+//	--Badweather + LTE --> becomes 4G
+//
+//	--UnsuitableWeather + Edge --> becomes None
+//	--UnsuitableWeather + Com_3G --> becomes None
+//	--UnsuitableWeather + Com_4G --> becomes Edge
+//	--UnsuitableWeather + LTE --> becomes 3G
+//}
 
---#3, we should've added a fact
-//English - a recent geofence triggers an alert
-/*fact AlertIfRecentGeofence{
-	all t1: TrackingDevice | some t1.recentGeofence implies one t1.alert
-}*/
-
---#4, Scenerio 2, we should've changed the wording. We meant that when it's around any
---cell towers, it must be able to communicate with a cell tower
-
---#5, Scenario 5, the trackign device is near a cell tower, and good weather
---but not showing LTE. Our english for this is out of date, the sim card may change the 
---communication? or the cell tower may only support certain communication types
---Maybe we needed something that said range near 
-
---#6, we need to introduce how the weather affects the experience
-/*
 fact WeatherAffectingCommunication{
 	//Bad weather
 	all t: TrackingDevice | (t.weather = BadWeather and ran[t.communicationType].originalCommunication = EDGE) implies dom[t.communicationType]= None
@@ -283,13 +212,51 @@ fact WeatherAffectingCommunication{
 	all t: TrackingDevice |  (t.weather = UnsuitableWeather and ran[t.communicationType].originalCommunication  = LTE) implies dom[t.communicationType] = Com_3G
 }
 
---modification to cell tower
-sig CellTower{
-	originalCommunication: Communication
-}
 
---in sanity check
-some t: TrackingDevice |
-		t.weather = UnsuitableWeather && ran[t.communicationType].originalCommunication = Com_4G 
 
+/**/
+--Preds Scenarios
+/*1
+The tracking device is far away from the cell tower which means there are no CommunicationTypes available
+and automatically create a connection with another device
 */
+pred ScenarioOne[t1: TrackingDevice]{
+	dom[t1.range] = Level_0
+
+} run ScenarioOne for 3 expect 1
+
+/*2
+Multiple cell towers in a geographic location and at least one tower must be able to identify that
+a tracking device is near a cell tower.
+*/
+pred ScenarioTwo[c: CellTower]{
+	--gt[#Vehicle,1]
+	gt[#TrackingDevice,1]
+	gt[#CellTower,1]
+	--some TrackingDevice.communicationType.c 
+} run ScenarioTwo for 7 expect 1
+
+/*3
+The tracking device is near a cell tower,
+but the weather condition is bad resulting in poor or okay experience.
+*/
+pred ScenarioThree[t: TrackingDevice]{
+	dom[t.range] = Level_3
+	t.weather = UnsuitableWeather
+} run ScenarioThree for 7 expect 1
+
+/*4 - Vehicle has left geofence and should have an alert 
+*/
+pred ScenarioFour[t: TrackingDevice]{
+	some t.recentGeofence
+} run ScenarioFour for 7 expect 1
+
+/*5 - The tracking device is near a cell tower, outside of it's geofence, 
+weather condition is good and the tracking device supports LTE
+*/
+pred ScenarioFive[t: TrackingDevice]{
+	dom[t.range] = Level_4
+	some t.recentGeofence
+	t.weather = GoodWeather
+
+} run ScenarioFive for 7 expect 1
