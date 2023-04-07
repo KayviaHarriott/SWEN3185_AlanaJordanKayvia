@@ -10,7 +10,6 @@ open util/ternary
 
 sig Vehicle{
 	tracker: TrackingDevice,
-	--battery: lone Battery,
 	engine: Engine
 }
 
@@ -19,36 +18,32 @@ sig Engine{
 }
 
 sig TrackingDevice{
-	track_dev_battery: Battery,
 	status: Status,
-	communicationType: CellTower -> Communication -> SignalStrength, --or two fields saying which cellt it's connected to
-	--range: SignalStrength -> CellTower,
+	communicationType: CellTower -> Communication -> SignalStrength,
 	connection: Location -> OtherDevice, 
-	geofences: Location -> Location,
-	activeGeofence: Location -> Location, --activeGeofences in geofences, make it a sequence of locations
-	--recentGeofence: Location -> Location, --why do we have this if it's the last active geofence?
-	--alert: Alert -> (activeGeofence+recentGeofence),
-	experience: one Experience,
+	geofences: Location -> Location ,
+	--geofences: seq Location,
+	activeGeofence: Location -> Location,
+	-- activeGeofence: seq Location,
+	experience: one Experience
 }
 abstract sig Alert{}
 one sig Entered, Left extends Alert {}
 
 sig Map{
-	geofence : location -> location
+	geofence : Location -> Location
 }
 
 sig OtherDevice{
 	range: Location -> TrackingDevice,
-	communicationType: Communication -> CellTower
+	communicationType: Communication -> CellTower,
 	permissions: Status
 }
 
 sig CellTower{
-	originalCommunication: Communication
+	originalCommunication: Communication,
 	location: Location
 }
-
---sig Battery{}
 
 abstract sig Communication{}
 one sig None, EDGE, Com_3G, Com_4G, LTE extends Communication{} 
@@ -66,7 +61,6 @@ abstract sig Location {
 	weather: Weather
 }
 	
-
 abstract sig Experience {}
 one sig Excellent, Good, Okay, Poor extends Experience {}
 
@@ -110,7 +104,8 @@ fact AllTrackingDeviceHaveCommunicationType{
 
 //English - All tracking devices must have one range to a cell tower
 fact AllTrackingDeviceHaveOneRange{
-	all t1: TrackingDevice | one t1.range
+	--need to modify how we target the range
+	--all t1: TrackingDevice | one t1.range
 }
 
 //English - If a tracking device is off then it should not have a communication
@@ -137,31 +132,24 @@ fact AlertIfRecentGeofence{
 //Acceptable - 3G, 4G, and LTE, Low - 3G and Edge and Out_Of_Range - None
 --EDGE, LTE, 3G, 4G
 fact CommunicationRelationToLocationOutOfRange { 
-	
-	all t: TrackingDevice | dom[t.range] = Level_0 implies ran[t.communicationType.univ] = None and t.experience = Poor
-	all t: TrackingDevice | ran[t.communicationType.univ] = None implies dom[t.range] = Level_0
-	all t: TrackingDevice | dom[t.range] = Level_1 implies t.experience = Poor
+	all t: TrackingDevice | ran[t.communicationType] = Level_0 implies ran[t.communicationType.univ] = None and t.experience = Poor
+	all t: TrackingDevice | ran[t.communicationType.univ] = None implies ran[t.communicationType] = Level_0
+	all t: TrackingDevice | ran[t.communicationType] = Level_1 implies t.experience = Poor
 
-	all t: TrackingDevice | dom[t.range] = Level_2 and ran[t.communicationType.univ] = EDGE implies t.experience = Poor
-	all t: TrackingDevice | dom[t.range] = Level_2 and ran[t.communicationType.univ] = Com_3G implies t.experience = Okay
-	all t: TrackingDevice | dom[t.range] = Level_2 and ran[t.communicationType.univ] = Com_4G implies t.experience = Okay
-	all t: TrackingDevice | dom[t.range] = Level_2 and ran[t.communicationType.univ] = LTE implies t.experience = Okay
+	all t: TrackingDevice | ran[t.communicationType] = Level_2 and ran[t.communicationType.univ] = EDGE implies t.experience = Poor
+	all t: TrackingDevice | ran[t.communicationType] = Level_2 and ran[t.communicationType.univ] = Com_3G implies t.experience = Okay
+	all t: TrackingDevice | ran[t.communicationType] = Level_2 and ran[t.communicationType.univ] = Com_4G implies t.experience = Okay
+	all t: TrackingDevice | ran[t.communicationType] = Level_2 and ran[t.communicationType.univ] = LTE implies t.experience = Okay
 
-	all t: TrackingDevice | dom[t.range] = Level_3 and ran[t.communicationType.univ] = EDGE implies t.experience = Okay
-	all t: TrackingDevice | dom[t.range] = Level_3 and ran[t.communicationType.univ] = Com_3G implies t.experience = Good
-	all t: TrackingDevice | dom[t.range] = Level_3 and ran[t.communicationType.univ] = Com_4G implies t.experience = Good
-	all t: TrackingDevice | dom[t.range] = Level_3 and ran[t.communicationType.univ] = LTE implies t.experience = Excellent
+	all t: TrackingDevice | ran[t.communicationType] = Level_3 and ran[t.communicationType.univ] = EDGE implies t.experience = Okay
+	all t: TrackingDevice | ran[t.communicationType] = Level_3 and ran[t.communicationType.univ] = Com_3G implies t.experience = Good
+	all t: TrackingDevice | ran[t.communicationType] = Level_3 and ran[t.communicationType.univ] = Com_4G implies t.experience = Good
+	all t: TrackingDevice | ran[t.communicationType] = Level_3 and ran[t.communicationType.univ] = LTE implies t.experience = Excellent
 
-	all t: TrackingDevice | dom[t.range] = Level_4 and ran[t.communicationType.univ] = EDGE implies t.experience = Okay
-	all t: TrackingDevice | dom[t.range] = Level_4 and ran[t.communicationType.univ] = Com_3G implies t.experience = Good
-	all t: TrackingDevice | dom[t.range] = Level_4 and ran[t.communicationType.univ] = Com_4G implies t.experience = Excellent
-	all t: TrackingDevice | dom[t.range] = Level_4 and ran[t.communicationType.univ] = LTE implies t.experience = Excellent
-
-}
-
-//English - Each tracker has a unique battery - good
-fact uniqueTrackerBattery{
-	all disj t1, t2: TrackingDevice | t1.track_dev_battery != t2.track_dev_battery
+	all t: TrackingDevice | ran[t.communicationType] = Level_4 and ran[t.communicationType.univ] = EDGE implies t.experience = Okay
+	all t: TrackingDevice | ran[t.communicationType] = Level_4 and ran[t.communicationType.univ] = Com_3G implies t.experience = Good
+	all t: TrackingDevice | ran[t.communicationType] = Level_4 and ran[t.communicationType.univ] = Com_4G implies t.experience = Excellent
+	all t: TrackingDevice | ran[t.communicationType] = Level_4 and ran[t.communicationType.univ] = LTE implies t.experience = Excellent
 }
 
 //English - The tracking device may only communicate with a 'other device' if 
@@ -181,7 +169,8 @@ fact AutomaticallyCommunicateWithOtherDevice{
 	--all t1: TrackingDevice-- | --, loc: Location, othD: OtherDevice 
 		--| Location -> OtherDevice in t1.connection
 	--all t1: TrackingDevice | dom[t1.range] = Level_0 implies one t1.connection
-	all t1: TrackingDevice | dom[t1.range] = Level_0 implies #t1.connection > 0
+	--need to modify how we target range
+all t1: TrackingDevice |  ran[t1.communicationType] = Level_0 implies #t1.connection > 0
 }
 //
 //fact WeatherAffectingCommunication{
@@ -207,7 +196,8 @@ fact AutomaticallyCommunicateWithOtherDevice{
 //}
 
 fact WeatherAffectingCommunication{
-	//Bad weather
+	--need to change to location of tracking device
+/*	//Bad weather
 	all t: TrackingDevice | (t.weather = BadWeather and dom[t.communicationType.univ].originalCommunication = EDGE) implies ran[t.communicationType.univ]= None
 	all t: TrackingDevice |  (t.weather = BadWeather and dom[t.communicationType.univ].originalCommunication = Com_3G) implies ran[t.communicationType.univ] = EDGE
 	all t: TrackingDevice |  (t.weather = BadWeather and dom[t.communicationType.univ].originalCommunication = Com_4G) implies ran[t.communicationType.univ] = Com_3G
@@ -218,6 +208,8 @@ fact WeatherAffectingCommunication{
 	all t: TrackingDevice |  (t.weather = UnsuitableWeather and dom[t.communicationType.univ].originalCommunication  = Com_3G) implies ran[t.communicationType.univ] = None
 	all t: TrackingDevice |  (t.weather = UnsuitableWeather and dom[t.communicationType.univ].originalCommunication  = Com_4G) implies ran[t.communicationType.univ] = EDGE
 	all t: TrackingDevice |  (t.weather = UnsuitableWeather and dom[t.communicationType.univ].originalCommunication  = LTE) implies ran[t.communicationType.univ] = Com_3G
+	*/
+
 }
 
 
@@ -229,8 +221,7 @@ The tracking device is far away from the cell tower which means there are no Com
 and automatically create a connection with another device
 */
 pred ScenarioOne[t1: TrackingDevice]{
-	dom[t1.range] = Level_0
-
+	ran[t1.communicationType] = Level_0
 } run ScenarioOne for 3 expect 1
 
 /*2
@@ -249,8 +240,10 @@ The tracking device is near a cell tower,
 but the weather condition is bad resulting in poor or okay experience.
 */
 pred ScenarioThree[t: TrackingDevice]{
-	dom[t.range] = Level_3
-	t.weather = UnsuitableWeather
+	--need to modify how we target the range
+	//dom[t.range] = Level_3
+	--need to change to location of tracking device
+	--t.weather = UnsuitableWeather
 } run ScenarioThree for 7 expect 1
 
 /*4 - Vehicle has left geofence and should have an alert 
@@ -263,48 +256,11 @@ pred ScenarioFour[t: TrackingDevice]{
 weather condition is good and the tracking device supports LTE
 */
 pred ScenarioFive[t: TrackingDevice]{
-	dom[t.range] = Level_4
+	--need to modify how we target the range
+	--dom[t.range] = Level_4
 	--some t.recentGeofence
-	t.weather = GoodWeather
+	--need to change to location of tracking device
+	--t.weather = SuitableWeather
 
 } run ScenarioFive for 7 expect 1
-
-
-/*
-x Change SignalStrengths to Service level or signal strength 
-
-A few things can remain static in the system 
-Things to change in our system :
-- how the TD communicates with towers based on the weather 
-- Why is weather linked to tracking device ? Weather in location . Why doesn’t the location know about the weather. Location should have weather field. 
->>The update: Location has relation weather, and weather was removed from TrackingDevice
-- Experience is tied to weather and location , where the cell tower is also affects this. 
-- Go through location to cell tower 
-- Cell tower needs to be linked location
-- Possible merge communication type and range (SignalStrength)
-- Comtype to SignalStrength to cell tower should be the same 
-- Have to model that the other device is allowing to communicate (permissions)*important*
-- Combining suitable and good weather 
-- Variable things
-- Engine status 
-- Remove battery as a signature 
-- Geofences is higher order relation 
-- Activegeofence in geofences 
-- Recentgeofence in geofences
-- Why do we need recentgeofence ? Can have a function that gets last location 
-- Activegeofence is history of location 
-- If it’s not a location in geofence then it sends an alert 
-- Map is location -> location , strongly connected 
-- Geofence : location-> location , structure of a ring ( one loop)
-- Active : seq location 
-- Weather 
-
-- TD status 
-- Active location 
-- Operations for movement , change weather , change status 
-- Weather is about location 
-- Remove battery 
-- Cell tower is in location 
-
-*/
 	

@@ -28,7 +28,7 @@
 - Activegeofence is history of location 
 - [x] If it’s not a location in geofence then it sends an alert 
     - thinking to write a fact to say if not in location of geofence then it's an alert
-- [x]Map is location -> location , strongly connected 
+- [x] Map is location -> location , strongly connected 
     - [x]Geofence : location-> location , structure of a ring ( one loop)
     - we made a map signature and added the relation geofence: location -> location
 - [ ] Active : seq location 
@@ -37,8 +37,7 @@
 
 ---
 ## Variables
-- Engine status 
-
+- Engine status
 
 ---
 ## Operations
@@ -51,10 +50,13 @@
 ## To Do
 - [ ] Clarify the geofences
 - [ ] Make location relation in tracking device sequence
+- [ ] Ensure that location is sequential
+- [ ] Ensure that the location
 
 ---
 ## Additional Changes Made
 - Cell tower is in location 
 - removed recent geofences
+
 
 
