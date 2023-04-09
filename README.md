@@ -53,10 +53,27 @@
 - [ ] Ensure that location is sequential
 - [ ] Ensure that the location
 
+# ---
+- [ ] Fact AlertRecentGeofence, AlertInGeofence, if we add operations it shows the history and changes the alert
+- [ ] Look at scenarios
+- [ ] Come up with ideas of operations we want to model
+    - Movement ()
+    - Changing weather (Jordan)
+    - Changing status (Alana)
+    - Changing alert (Kayvia)
+- [ ] Check that all the facts are fully represented and work
+    - Each person write two checks 
+- [ ] Verification and Liveness (with fairness) checks for all the applicable constraints on the mutable elements.
+
+
 ---
 ## Additional Changes Made
 - Cell tower is in location 
 - removed recent geofences
+
+--
+## List of changes we made to model
+
 
 
 

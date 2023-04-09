@@ -141,6 +141,8 @@ fact CommunicationRelationToLocationOutOfRange {
 
 }
 
+
+
 --that weather affects the communication type
 // abstract sig Weather {} --affects communication
 // one sig GoodWeather, SuitableWeather, BadWeather, UnsuitableWeather extends Weather {}

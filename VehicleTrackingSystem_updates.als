@@ -1,12 +1,13 @@
 --Group Members:
 --Alana Thompson
---Jordan Earle
 --Kayvia Harriott
+--Jordan Earle
 
 module vehicle_tracking_system
 
 open util/relation 
 open util/ternary
+open util/ordering[Location] as ord
 
 sig Vehicle{
 	tracker: TrackingDevice,
@@ -14,30 +15,30 @@ sig Vehicle{
 }
 
 sig Engine{
-	status: Status
+	var status: Status
 }
 
 sig TrackingDevice{
-	status: Status,
+	var status: Status,
 	communicationType: CellTower -> Communication -> SignalStrength,
 	connection: Location -> OtherDevice, 
-	geofences: Location -> Location ,
-	--geofences: seq Location,
-	activeGeofence: Location -> Location,
-	-- activeGeofence: seq Location,
-	experience: one Experience
+	geofences: Location -> Location, --fact where each location has only 4 location
+	var activeLocation: seq Location,
+	experience: one Experience,
+	var alertType: Alert
 }
+
 abstract sig Alert{}
-one sig Entered, Left extends Alert {}
+one sig Entered, Exited extends Alert {}
 
 sig Map{
-	geofence : Location -> Location
+	boundary : Location -> Location
 }
 
 sig OtherDevice{
 	range: Location -> TrackingDevice,
 	communicationType: Communication -> CellTower,
-	permissions: Status
+	var permissions: Status
 }
 
 sig CellTower{
@@ -58,7 +59,7 @@ abstract sig Weather {}
 one sig SuitableWeather, BadWeather, UnsuitableWeather extends Weather {}
 
 abstract sig Location {
-	weather: Weather
+	var weather: Weather
 }
 	
 abstract sig Experience {}
@@ -81,6 +82,22 @@ pred sanityCheck[
 } run sanityCheck for 7 expect 1
 
 /**Constraints/Invariants(?)**/
+//The permission of the OtherDevice determines if it's connected to a TrackingDevice
+fact PermissionsOtherDevice{
+	all o: OtherDevice | o.permissions = Off implies o not in ran[TrackingDevice.connection]
+}
+
+//TrackingDevice's geofence can have up to 4 points
+fact EachGeofenceUnique{
+	all t: TrackingDevice | #ran[t.geofences] = 4
+}
+// Location1, Location2, Location3, Location4
+// alert=Exited
+
+fact InGeofence{ 
+	all t1: TrackingDevice | one t1.activeLocation implies t1.alertType = Entered
+}
+
 
 //English - Every vehicle has a unique engine
 fact EachVehicleUniqueEngine{
@@ -127,6 +144,11 @@ fact AlertIfRecentGeofence{
 	--all t1: TrackingDevice | some t1.recentGeofence implies one t1.alert
 }
 
+fact AlertIfRecentGeofence{ 
+	all t1: TrackingDevice | one t1.activeLocation' implies t1.alertType = Exited -- made changes
+}
+
+  
 //English - A tracking device must only communicate with the cell tower in a specific
 //type of communication based on its location to the cell tower i.e. Best - 4G and LTE,
 //Acceptable - 3G, 4G, and LTE, Low - 3G and Edge and Out_Of_Range - None
@@ -248,9 +270,17 @@ pred ScenarioThree[t: TrackingDevice]{
 
 /*4 - Vehicle has left geofence and should have an alert 
 */
+/*
 pred ScenarioFour[t: TrackingDevice]{
 	--some t.recentGeofence
 } run ScenarioFour for 7 expect 1
+*/
+
+//Alana change
+pred ScenarioFour[t: TrackingDevice]{ --made changes
+--	some t.activeGeofence'
+} run ScenarioFour for 7 expect 1
+
 
 /*5 - The tracking device is near a cell tower, outside of it's geofence, 
 weather condition is good and the tracking device supports LTE
@@ -263,4 +293,6 @@ pred ScenarioFive[t: TrackingDevice]{
 	--t.weather = SuitableWeather
 
 } run ScenarioFive for 7 expect 1
+
+
 	
