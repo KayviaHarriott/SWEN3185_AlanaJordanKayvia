@@ -7,7 +7,7 @@ module vehicle_tracking_system
 
 open util/relation 
 open util/ternary
-open util/ordering[Location] as ord
+open util/graph[Location]
 
 sig Vehicle{
 	tracker: TrackingDevice,
@@ -29,10 +29,10 @@ sig TrackingDevice{
 }
 
 abstract sig Alert{}
-one sig Entered, Exited extends Alert {}
+one sig Inside, Outside extends Alert {} -- inside means it has entered and is also within  geofence, opposite can be assumed for outside
 
 sig Map{
-	boundary : Location -> Location
+	map: Location -> Location
 }
 
 sig OtherDevice{
@@ -67,37 +67,17 @@ one sig Excellent, Good, Okay, Poor extends Experience {}
 
 pred sanityCheck[
 ]{
-	some Vehicle
-	some Engine
 	some TrackingDevice
-	some CellTower
-	some Location
-	some Vehicle.tracker
-	--some Vehicle.tracker.status == Off
-	--one t: TrackingDevice | t.status = Off
-	--some t: TrackingDevice |
-	--	t.weather = BadWeather 
-	--	&& ran[t.communicationType].originalCommunication = LTE --> com 3g
+	some TrackingDevice.communicationType
 
 } run sanityCheck for 7 expect 1
 
-/**Constraints/Invariants(?)**/
-//The permission of the OtherDevice determines if it's connected to a TrackingDevice
-fact PermissionsOtherDevice{
-	all o: OtherDevice | o.permissions = Off implies o not in ran[TrackingDevice.connection]
-}
 
-//TrackingDevice's geofence can have up to 4 points
-fact EachGeofenceUnique{
-	all t: TrackingDevice | #ran[t.geofences] = 4
+/**Facts**/
+//English - Each system only has one map
+fact OneMap{
+	one Map
 }
-// Location1, Location2, Location3, Location4
-// alert=Exited
-
-fact InGeofence{ 
-	all t1: TrackingDevice | one t1.activeLocation implies t1.alertType = Entered
-}
-
 
 //English - Every vehicle has a unique engine
 fact EachVehicleUniqueEngine{
@@ -119,36 +99,59 @@ fact AllTrackingDeviceHaveCommunicationType{
 	all t1: TrackingDevice | one t1.communicationType
 }
 
-//English - All tracking devices must have one range to a cell tower
-fact AllTrackingDeviceHaveOneRange{
-	--need to modify how we target the range
-	--all t1: TrackingDevice | one t1.range
+//The permission of the OtherDevice determines if it's connected to a TrackingDevice
+fact PermissionsOtherDevice{
+	all o: OtherDevice | o.permissions = Off implies o not in ran[TrackingDevice.connection]
+}
+
+//English - a geofence has 4 locations
+fact GeofenceDefinition{
+	all t1: TrackingDevice | #ran[t1.geofences] = 4 and dom[t1.geofences] = ran[t1.geofences]
+}
+//English - a geofence is a cycle
+fact GeofenceIsCycle{
+	all t1: TrackingDevice | ring[t1.geofences]
+}
+//English - geofence is in map
+fact GeofenceIsinMap{
+	all t1: TrackingDevice | t1.geofences in Map.map
+}
+
+//English - if there is an alert, the device must be somewhere
+fact AlertMustHaveReason{
+	all t: TrackingDevice | some t.alertType implies some t.activeLocation
+}
+
+//English - 
+fact AlertIfInsideGeofence{ 
+	all t1: TrackingDevice | last[t1.activeLocation] in ran[t1.geofences] implies t1.alertType = Inside -- made changes
+	all t1: TrackingDevice | t1.alertType = Inside implies last[t1.activeLocation] in ran[t1.geofences]
+}
+
+//English - 
+fact AlertIfOutsideGeofence{ 
+	all t1: TrackingDevice | last[t1.activeLocation] not in ran[t1.geofences] implies t1.alertType = Outside -- made changes
+	all t1: TrackingDevice | t1.alertType = Outside implies last[t1.activeLocation] not in ran[t1.geofences]
 }
 
 //English - If a tracking device is off then it should not have a communication
 //type to the cell tower
 fact NoCommunicationTypeIfTrackingDeviceOff {
-	--all t1: TrackingDevice |  t1.status = Off implies no t1.communicationType
 	all t1: TrackingDevice | t1.status = Off implies ran[t1.communicationType.univ] = None 
-
 }
 
 //English - If a vehicle engine status is off, so is tracking device
 fact NoCommunicationTypeIfTrackingDeviceOff {
 	all t1: TrackingDevice, veh: Vehicle |  veh.engine.status = Off implies t1.status = Off
+}
+//if a location is inside the geofence
+-- Geo A B C D, E F G H
 
+//English - If a vehicle engine status is off, so is tracking device
+fact VehicleEngineStatusOffTrackingDeviceOff {
+	all t1: TrackingDevice, veh: Vehicle |  veh.engine.status = Off implies t1.status = Off
 }
 
-//English - a recent geofence triggers an alert
-fact AlertIfRecentGeofence{
-	--all t1: TrackingDevice | some t1.recentGeofence implies one t1.alert
-}
-
-fact AlertIfRecentGeofence{ 
-	all t1: TrackingDevice | one t1.activeLocation' implies t1.alertType = Exited -- made changes
-}
-
-  
 //English - A tracking device must only communicate with the cell tower in a specific
 //type of communication based on its location to the cell tower i.e. Best - 4G and LTE,
 //Acceptable - 3G, 4G, and LTE, Low - 3G and Edge and Out_Of_Range - None
@@ -179,62 +182,42 @@ fact CommunicationRelationToLocationOutOfRange {
 fact OnlyCommunicateWithOtherDeviceWhenOutofRange{ --changed due to updated code
 	all t1: TrackingDevice, oth: OtherDevice, loc: Location, cell: CellTower |
 		loc -> oth in t1.connection 
-			--implies None -> cell = t1.communicationType
 			implies cell -> None = t1.communicationType.univ						    
 }
---communicationType: CellTower -> Communication -> SignalStrength
 
 fact AutomaticallyCommunicateWithOtherDevice{
-	--all t1: TrackingDevice, loc: Location, oth: OtherDevice |
-		--(dom[t1.range] = Level_0 && dom[t1.communicationType] = None)
-			--	implies loc -> oth in t1.connection	
-	--all t1: TrackingDevice-- | --, loc: Location, othD: OtherDevice 
-		--| Location -> OtherDevice in t1.connection
-	--all t1: TrackingDevice | dom[t1.range] = Level_0 implies one t1.connection
-	--need to modify how we target range
-all t1: TrackingDevice |  ran[t1.communicationType] = Level_0 implies #t1.connection > 0
+	all t1: TrackingDevice |  ran[t1.communicationType] = Level_0 implies #t1.connection > 0
 }
-//
-//fact WeatherAffectingCommunication{
-//	all t1: TrackingDevice |
-//		(dom[t1.communicationType] = EDGE && t1.weather = BadWeather)
-//			=> (dom[t1.communicationType] = None)
-//	all t1: TrackingDevice |
-//		(dom[t1.communicationType] = Com_3G && t1.weather = BadWeather)
-//			=> (dom[t1.communicationType] = EDGE)
-//	all t1: TrackingDevice |
-//		(dom[t1.communicationType] = Com_4G && t1.weather = BadWeather)
-//			=> (dom[t1.communicationType] = Com_3G)
-//
-//	--Badweather + Edge --> becomes None
-//	--Badweather + Com_3G --> becomes Edge
-//	--Badweather + Com_4G --> becomes 3G
-//	--Badweather + LTE --> becomes 4G
-//
-//	--UnsuitableWeather + Edge --> becomes None
-//	--UnsuitableWeather + Com_3G --> becomes None
-//	--UnsuitableWeather + Com_4G --> becomes Edge
-//	--UnsuitableWeather + LTE --> becomes 3G
-//}
 
 fact WeatherAffectingCommunication{
 	--need to change to location of tracking device
-/*	//Bad weather
-	all t: TrackingDevice | (t.weather = BadWeather and dom[t.communicationType.univ].originalCommunication = EDGE) implies ran[t.communicationType.univ]= None
-	all t: TrackingDevice |  (t.weather = BadWeather and dom[t.communicationType.univ].originalCommunication = Com_3G) implies ran[t.communicationType.univ] = EDGE
-	all t: TrackingDevice |  (t.weather = BadWeather and dom[t.communicationType.univ].originalCommunication = Com_4G) implies ran[t.communicationType.univ] = Com_3G
-	all t: TrackingDevice |  (t.weather = BadWeather and dom[t.communicationType.univ].originalCommunication = LTE) implies ran[t.communicationType.univ] = Com_4G
+	//Bad weather
+	all t: TrackingDevice |  (last[t.activeLocation].weather = BadWeather and dom[t.communicationType.univ].originalCommunication = EDGE) implies ran[t.communicationType.univ]= None
+	all t: TrackingDevice |  (last[t.activeLocation].weather = BadWeather and dom[t.communicationType.univ].originalCommunication = Com_3G) implies ran[t.communicationType.univ] = EDGE
+	all t: TrackingDevice |  (last[t.activeLocation].weather = BadWeather and dom[t.communicationType.univ].originalCommunication = Com_4G) implies ran[t.communicationType.univ] = Com_3G
+	all t: TrackingDevice |  (last[t.activeLocation].weather= BadWeather and dom[t.communicationType.univ].originalCommunication = LTE) implies ran[t.communicationType.univ] = Com_4G
 
 	//Unsuitable weather
-	all t: TrackingDevice | (t.weather = UnsuitableWeather and dom[t.communicationType.univ].originalCommunication = EDGE) implies ran[t.communicationType.univ]= None
-	all t: TrackingDevice |  (t.weather = UnsuitableWeather and dom[t.communicationType.univ].originalCommunication  = Com_3G) implies ran[t.communicationType.univ] = None
-	all t: TrackingDevice |  (t.weather = UnsuitableWeather and dom[t.communicationType.univ].originalCommunication  = Com_4G) implies ran[t.communicationType.univ] = EDGE
-	all t: TrackingDevice |  (t.weather = UnsuitableWeather and dom[t.communicationType.univ].originalCommunication  = LTE) implies ran[t.communicationType.univ] = Com_3G
-	*/
-
+	all t: TrackingDevice |  (last[t.activeLocation].weather = UnsuitableWeather and dom[t.communicationType.univ].originalCommunication = EDGE) implies ran[t.communicationType.univ]= None
+	all t: TrackingDevice |  (last[t.activeLocation].weather = UnsuitableWeather and dom[t.communicationType.univ].originalCommunication  = Com_3G) implies ran[t.communicationType.univ] = None
+	all t: TrackingDevice |  (last[t.activeLocation].weather= UnsuitableWeather and dom[t.communicationType.univ].originalCommunication  = Com_4G) implies ran[t.communicationType.univ] = EDGE
+	all t: TrackingDevice |  (last[t.activeLocation].weather = UnsuitableWeather and dom[t.communicationType.univ].originalCommunication  = LTE) implies ran[t.communicationType.univ] = Com_3G
+	
 }
 
+//Additional Facts
+//All locations in a geofence have the same weather
+fact GeofenceLocationSameWeather{
+	all t:TrackingDevice | #dom[t.geofences].weather = 1  
+					//and #dom[t.geofences].weather = 1 
+}
 
+//English - 
+fact GeofencePreviousLocationNotLastLocation {
+	all t: TrackingDevice | #t.activeLocation > 1 
+				implies (prev[t.activeLocation] != last[t.activeLocation])
+	--go through and check if it has a next and the next is not equal to the current
+}
 
 /**/
 --Preds Scenarios
@@ -294,5 +277,45 @@ pred ScenarioFive[t: TrackingDevice]{
 
 } run ScenarioFive for 7 expect 1
 
+pred leaveGeofence[t, t': TrackingDevice, l: Location] {
+	l not in ran[t.geofences]
+	t.alertType = Inside
 
+	add[t.activeLocation, l, t'.activeLocation]
+	
+
+} run leaveGeofence for 7 expect 1
+
+
+pred addNew[post: Post, person: Person, level: Level, shareWith: set univ]{ 
+	--invMutable
+	//Preconditions
+	no post.owner -- the post being added should have no owner
+	level in dom[clearance] + ran[clearance] -- the level is in the clearance
+	no post.whoCanSee	--no one should be able to see the post before
+	no post.chat -- post should not have a chat
+	--no roots[chat] & post --causing no instances
+	post in Original --the post is an original
+	some shareWith implies (shareWith in Group + Person + Predefined)
+	all g: shareWith & Group | g -> person in owner.univ
+
+	//Postconditions
+	owner' = owner + post -> person -> level--an owner is added
+	permissions' = permissions + post -> shareWith --the permissions afterward change
+	whoCanSee' = whoCanSee + post -> ran[owner'.univ] --owner is able to see
+	let o = ran[owner'.univ] | whoCanSee' = whoCanSee + post -> o.contacts.univ --contacts of owner able to see
+	
+
+	//Frameconditions
+	person.contacts = person.contacts'--the contacts of the person doesn't change
+	chat = chat' --the chat should not change
+	whoCanSee != whoCanSee' --who can see should change
+	Group = Group'
+	Level = Level'
+	Person = Person'
+	contacts = contacts'
+	Post = Post'
+	Reply = Reply'
+
+} run addNew for 7 expect 1
 	

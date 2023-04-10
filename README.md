@@ -65,7 +65,6 @@
     - Each person write two checks 
 - [ ] Verification and Liveness (with fairness) checks for all the applicable constraints on the mutable elements.
 
-
 ---
 ## Additional Changes Made
 - Cell tower is in location 
@@ -73,7 +72,11 @@
 
 --
 ## List of changes we made to model
+- make an assumption that if it's the location is not one of the nodes/locations in geofence, it's not in the geofence
 
 
 
-
+## From Monique
+- Should have a intersection of where the map and geofence meet
+- The alerts should be if we leave or enter the geofences
+- Map should have all the locations of the geofences
