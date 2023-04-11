@@ -35,48 +35,28 @@
     - wondering what this means
 - [x] Weather is about location 
 
----
-## Variables
-- Engine status
-
----
-## Operations
-- Movement
-- Change weather
-- Change status
-- function gets the last location
-
----
+--
 ## To Do
-- [ ] Clarify the geofences
-- [ ] Make location relation in tracking device sequence
-- [ ] Ensure that location is sequential
-- [ ] Ensure that the location
 
-# ---
-- [ ] Fact AlertRecentGeofence, AlertInGeofence, if we add operations it shows the history and changes the alert
+### Facts
+sig TrackingDevice
+[ ] 'geofences', each geofence should be limited to 4 Locations
+[ ] 'activeLocation', for each Location, the next Location added should not be equal to the prev location.
+[ ] The Map should have all locations/nodes of the geofences
+
+### General
 - [ ] Look at scenarios
 - [ ] Come up with ideas of operations we want to model
     - Movement ()
     - Changing weather (Jordan)
     - Changing status (Alana)
     - Changing alert (Kayvia)
-- [ ] Check that all the facts are fully represented and work
-    - Each person write two checks 
+- [ ] Function that gets the last location
+- Each person write two checks 
 - [ ] Verification and Liveness (with fairness) checks for all the applicable constraints on the mutable elements.
 
----
-## Additional Changes Made
-- Cell tower is in location 
-- removed recent geofences
-
---
-## List of changes we made to model
-- make an assumption that if it's the location is not one of the nodes/locations in geofence, it's not in the geofence
-
-
-
-## From Monique
-- Should have a intersection of where the map and geofence meet
-- The alerts should be if we leave or enter the geofences
-- Map should have all the locations of the geofences
+## Changes Made to Add to Doc
+- In CellTower sig, we added Location
+- In TrackingDevice, the we added activeLocation, towerCommunication, towerStrength and removed recentGeofences
+- We are assuming that if an activeLocation of the tracking device is not one of the node/locations in the geofence, it's not inside of the geofence. (Monique: Should have a intersection of where the map and geofence meet)
+- We added facts 'AlertMustHaveReason', 'AlertIfInsideGeofence', 'AlertIfOutsideGeofence

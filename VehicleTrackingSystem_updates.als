@@ -20,8 +20,8 @@ sig Engine{
 
 sig TrackingDevice{
 	var status: Status,
-	--or communication: Communication, then communicationType: cell -> communication
-	communicationType: CellTower -> Communication -> SignalStrength, --wondering if this should be var
+	var towerCommunication: CellTower -> Communication,
+	var towerStrength: CellTower -> SignalStrength,
 	connection: Location -> OtherDevice, 
 	geofences: Location -> Location, --fact where each location has only 4 location
 	var activeLocation: seq Location,
@@ -75,7 +75,7 @@ pred sanityCheck[
 ]{
 	#TrackingDevice > 1
 --	#Location = 4
-	some TrackingDevice.communicationType
+	--some TrackingDevice.communicationType
 
 } run sanityCheck for 7 expect 1
 
@@ -99,7 +99,9 @@ fact EachTrackingDeviceLinkedToAVehicle{
 
 //English - All tracking devices must have a communicationType to a cell tower
 fact AllTrackingDeviceHaveCommunicationType{
-	all t1: TrackingDevice | one t1.communicationType
+	--may need to modify, do we mean it can only be connected to one cell tower?
+	-- prob not, so maybe one type of communication to a cell tower
+	all t1: TrackingDevice | one t1.towerCommunication
 }
 
 //The permission of the OtherDevice determines if it's connected to a TrackingDevice
@@ -139,7 +141,7 @@ fact AlertIfOutsideGeofence{
 //English - If a tracking device is off then it should not have a communication
 //type to the cell tower
 fact NoCommunicationTypeIfTrackingDeviceOff {
-	all t1: TrackingDevice | t1.status = Off implies ran[t1.communicationType.univ] = None 
+	all t1: TrackingDevice | t1.status = Off implies ran[t1.towerCommunication] = None 
 }
 
 //English - If a vehicle engine status is off, so is tracking device
@@ -159,24 +161,24 @@ fact VehicleEngineStatusOffTrackingDeviceOff {
 //Acceptable - 3G, 4G, and LTE, Low - 3G and Edge and Out_Of_Range - None
 --EDGE, LTE, 3G, 4G
 fact CommunicationRelationToLocationOutOfRange { 
-	all t: TrackingDevice | ran[t.communicationType] = Level_0 implies ran[t.communicationType.univ] = None and t.experience = Poor
-	all t: TrackingDevice | no ran[t.communicationType] implies ran[t.communicationType] = Level_0
-	all t: TrackingDevice | ran[t.communicationType] = Level_1 implies t.experience = Poor
+	all t: TrackingDevice | ran[t.towerStrength] = Level_0 implies ran[t.towerCommunication] = None and t.experience = Poor
+	--wee need to edit this, forgot what it means--all t: TrackingDevice | no ran[t.communicationType] implies ran[t.communicationType] = Level_0
+	all t: TrackingDevice | ran[t.towerStrength] = Level_1 implies t.experience = Poor
 
-	all t: TrackingDevice | ran[t.communicationType] = Level_2 and ran[t.communicationType.univ] = EDGE implies t.experience = Poor
-	all t: TrackingDevice | ran[t.communicationType] = Level_2 and ran[t.communicationType.univ] = Com_3G implies t.experience = Okay
-	all t: TrackingDevice | ran[t.communicationType] = Level_2 and ran[t.communicationType.univ] = Com_4G implies t.experience = Okay
-	all t: TrackingDevice | ran[t.communicationType] = Level_2 and ran[t.communicationType.univ] = LTE implies t.experience = Okay
+	all t: TrackingDevice | ran[t.towerStrength] = Level_2 and ran[t.towerCommunication] = EDGE implies t.experience = Poor
+	all t: TrackingDevice | ran[t.towerStrength] = Level_2 and ran[t.towerCommunication] = Com_3G implies t.experience = Okay
+	all t: TrackingDevice | ran[t.towerStrength] = Level_2 and ran[t.towerCommunication] = Com_4G implies t.experience = Okay
+	all t: TrackingDevice | ran[t.towerStrength] = Level_2 and ran[t.towerCommunication] = LTE implies t.experience = Okay
 
-	all t: TrackingDevice | ran[t.communicationType] = Level_3 and ran[t.communicationType.univ] = EDGE implies t.experience = Okay
-	all t: TrackingDevice | ran[t.communicationType] = Level_3 and ran[t.communicationType.univ] = Com_3G implies t.experience = Good
-	all t: TrackingDevice | ran[t.communicationType] = Level_3 and ran[t.communicationType.univ] = Com_4G implies t.experience = Good
-	all t: TrackingDevice | ran[t.communicationType] = Level_3 and ran[t.communicationType.univ] = LTE implies t.experience = Excellent
+	all t: TrackingDevice | ran[t.towerStrength] = Level_3 and ran[t.towerCommunication] = EDGE implies t.experience = Okay
+	all t: TrackingDevice | ran[t.towerStrength] = Level_3 and ran[t.towerCommunication] = Com_3G implies t.experience = Good
+	all t: TrackingDevice | ran[t.towerStrength] = Level_3 and ran[t.towerCommunication] = Com_4G implies t.experience = Good
+	all t: TrackingDevice | ran[t.towerStrength] = Level_3 and ran[t.towerCommunication] = LTE implies t.experience = Excellent
 
-	all t: TrackingDevice | ran[t.communicationType] = Level_4 and ran[t.communicationType.univ] = EDGE implies t.experience = Okay
-	all t: TrackingDevice | ran[t.communicationType] = Level_4 and ran[t.communicationType.univ] = Com_3G implies t.experience = Good
-	all t: TrackingDevice | ran[t.communicationType] = Level_4 and ran[t.communicationType.univ] = Com_4G implies t.experience = Excellent
-	all t: TrackingDevice | ran[t.communicationType] = Level_4 and ran[t.communicationType.univ] = LTE implies t.experience = Excellent
+	all t: TrackingDevice | ran[t.towerStrength] = Level_4 and ran[t.towerCommunication] = EDGE implies t.experience = Okay
+	all t: TrackingDevice | ran[t.towerStrength] = Level_4 and ran[t.towerCommunication] = Com_3G implies t.experience = Good
+	all t: TrackingDevice | ran[t.towerStrength] = Level_4 and ran[t.towerCommunication] = Com_4G implies t.experience = Excellent
+	all t: TrackingDevice | ran[t.towerStrength] = Level_4 and ran[t.towerCommunication] = LTE implies t.experience = Excellent
 }
 
 //English - The tracking device may only communicate with a 'other device' if 
@@ -184,26 +186,26 @@ fact CommunicationRelationToLocationOutOfRange {
 fact OnlyCommunicateWithOtherDeviceWhenOutofRange{ --changed due to updated code
 	all t1: TrackingDevice, oth: OtherDevice, loc: Location, cell: CellTower |
 		loc -> oth in t1.connection 
-			implies cell -> None = t1.communicationType.univ						    
+			implies cell -> None = t1.towerCommunication						    
 }
 
 fact AutomaticallyCommunicateWithOtherDevice{
-	all t1: TrackingDevice |  ran[t1.communicationType] = Level_0 implies #t1.connection > 0
+	all t1: TrackingDevice |  ran[t1.towerStrength] = Level_0 implies #t1.connection > 0
 }
 
 fact WeatherAffectingCommunication{
 	--need to change to location of tracking device
 	//Bad weather
-	all t: TrackingDevice |  (last[t.activeLocation].weather = BadWeather and dom[t.communicationType.univ].originalCommunication = EDGE) implies ran[t.communicationType.univ]= None
-	all t: TrackingDevice |  (last[t.activeLocation].weather = BadWeather and dom[t.communicationType.univ].originalCommunication = Com_3G) implies ran[t.communicationType.univ] = EDGE
-	all t: TrackingDevice |  (last[t.activeLocation].weather = BadWeather and dom[t.communicationType.univ].originalCommunication = Com_4G) implies ran[t.communicationType.univ] = Com_3G
-	all t: TrackingDevice |  (last[t.activeLocation].weather= BadWeather and dom[t.communicationType.univ].originalCommunication = LTE) implies ran[t.communicationType.univ] = Com_4G
+	all t: TrackingDevice |  (last[t.activeLocation].weather = BadWeather and dom[t.towerCommunication].originalCommunication = EDGE) implies ran[t.towerCommunication]= None
+	all t: TrackingDevice |  (last[t.activeLocation].weather = BadWeather and dom[t.towerCommunication].originalCommunication = Com_3G) implies ran[t.towerCommunication] = EDGE
+	all t: TrackingDevice |  (last[t.activeLocation].weather = BadWeather and dom[t.towerCommunication].originalCommunication = Com_4G) implies ran[t.towerCommunication] = Com_3G
+	all t: TrackingDevice |  (last[t.activeLocation].weather= BadWeather and dom[t.towerCommunication].originalCommunication = LTE) implies ran[t.towerCommunication] = Com_4G
 
 	//Unsuitable weather
-	all t: TrackingDevice |  (last[t.activeLocation].weather = UnsuitableWeather and dom[t.communicationType.univ].originalCommunication = EDGE) implies ran[t.communicationType.univ]= None
-	all t: TrackingDevice |  (last[t.activeLocation].weather = UnsuitableWeather and dom[t.communicationType.univ].originalCommunication  = Com_3G) implies ran[t.communicationType.univ] = None
-	all t: TrackingDevice |  (last[t.activeLocation].weather= UnsuitableWeather and dom[t.communicationType.univ].originalCommunication  = Com_4G) implies ran[t.communicationType.univ] = EDGE
-	all t: TrackingDevice |  (last[t.activeLocation].weather = UnsuitableWeather and dom[t.communicationType.univ].originalCommunication  = LTE) implies ran[t.communicationType.univ] = Com_3G
+	all t: TrackingDevice |  (last[t.activeLocation].weather = UnsuitableWeather and dom[t.towerCommunication].originalCommunication = EDGE) implies ran[t.towerCommunication]= None
+	all t: TrackingDevice |  (last[t.activeLocation].weather = UnsuitableWeather and dom[t.towerCommunication].originalCommunication  = Com_3G) implies ran[t.towerCommunication] = None
+	all t: TrackingDevice |  (last[t.activeLocation].weather= UnsuitableWeather and dom[t.towerCommunication].originalCommunication  = Com_4G) implies ran[t.towerCommunication] = EDGE
+	all t: TrackingDevice |  (last[t.activeLocation].weather = UnsuitableWeather and dom[t.towerCommunication].originalCommunication  = LTE) implies ran[t.towerCommunication] = Com_3G
 	
 }
 
@@ -245,7 +247,7 @@ The tracking device is far away from the cell tower which means there are no Com
 and automatically create a connection with another device
 */
 pred ScenarioOne[t1: TrackingDevice]{
-	ran[t1.communicationType] = Level_0
+	ran[t1.towerStrength] = Level_0
 } run ScenarioOne for 3 expect 1
 
 /*2
@@ -319,15 +321,15 @@ pred DisconnectFromTrackingDevicePermissionsChange[other: OtherDevice, track: Tr
 	other.permissions = On
 	other in ran[track.connection]
 	track.status = On
-	ran[track.communicationType.univ] = None
-	ran[track.communicationType] = Level_0
+	ran[track.towerCommunication] = None
+	ran[track.towerStrength] = Level_0
 
 
 	//postconditions
 	other'.permissions' = Off
 	other not in ran[track'.connection']
 	no other.range
-	ran[track.communicationType.univ] != None --added
+	ran[track.towerCommunication] != None --added
 	
 
 	//frame
@@ -337,17 +339,16 @@ pred DisconnectFromTrackingDevicePermissionsChange[other: OtherDevice, track: Tr
 
 } run DisconnectFromTrackingDevicePermissionsChange for 7 expect 1
 
-
 pred LeaveRangeOfCellTower[track: TrackingDevice, cell: CellTower, loc: Location]{
 	-- tracking device leaving the range of cell tower
 	//precondition
 	--tracking device and cell tower has connection
 	--signal strength has to be not equal to Level_0
-	ran[track.communicationType] != Level_0
+	ran[track.towerStrength] != Level_0
 	--status of tracking device has to be on
 	track.status = On
 	--communication is not equal to None
-	ran[track.communicationType.univ] != None
+	ran[track.towerCommunication] != None
 	--connection - shouldn't be connected to other device
 	
 
@@ -361,3 +362,20 @@ pred LeaveRangeOfCellTower[track: TrackingDevice, cell: CellTower, loc: Location
 	track.alertType' = track.alertType
 
 } run LeaveRangeOfCellTower for 7 expect 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
