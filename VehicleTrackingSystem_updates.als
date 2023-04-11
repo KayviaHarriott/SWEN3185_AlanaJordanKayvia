@@ -159,7 +159,8 @@ fact VehicleEngineStatusOffTrackingDeviceOff {
 --EDGE, LTE, 3G, 4G
 fact CommunicationRelationToLocationOutOfRange { 
 	all t: TrackingDevice | ran[t.towerStrength] = Level_0 implies ran[t.towerCommunication] = None and t.experience = Poor
-	all t: TrackingDevice | no ran[t.towerCommunication] implies ran[t.towerStrength] = Level_0 --unsure if i corrected this properly
+	all t: TrackingDevice | (no ran[t.towerCommunication] implies ran[t.towerStrength] = Level_0) --unsure if i corrected this properly
+		--	and (ran[t.towerStrength] = Level_0 implies ran[t.towerCommunication] = None) --unsure if needed
 	all t: TrackingDevice | ran[t.towerStrength] = Level_1 implies t.experience = Poor
 
 	all t: TrackingDevice | ran[t.towerStrength] = Level_2 and ran[t.towerCommunication] = EDGE implies t.experience = Poor
@@ -346,27 +347,33 @@ pred DisconnectFromTrackingDevicePermissionsChange[other: OtherDevice, track: Tr
 
 } run DisconnectFromTrackingDevicePermissionsChange for 7 expect 1
 
+//English - A function that takes a tracking device, cell tower and location,
+//the location is the new location of the tracking device which is outside the range of
+//the cell tower
 pred LeaveRangeOfCellTower[track: TrackingDevice, cell: CellTower, loc: Location]{
-	-- tracking device leaving the range of cell tower
-	//precondition
-	--tracking device and cell tower has connection
-	--signal strength has to be not equal to Level_0
-	ran[track.towerStrength] != Level_0
-	--status of tracking device has to be on
-	track.status = On
-	--communication is not equal to None
-	ran[track.towerCommunication] != None
-	--connection - shouldn't be connected to other device
-	
+	//preconditions
+	track.status = On --tracking device status is on
+	ran[track.towerStrength] != Level_0 --signal strength has to be not equal to Level_0
+	ran[track.towerCommunication] != None --communication is not equal to None
+	some track.towerCommunication && dom[track.towerCommunication] = cell --tracking device and cell tower has connection
+	some track.towerStrength && dom[track.towerStrength] = cell --shouldn't have a connection to a OtherDevice
+	last[track.activeLocation] != loc --last activeLocation isn't the new one being added
+	some v: Vehicle | track in v.tracker implies v.engine.status = On --engine status stays on
 
-	//postcondition
-	-- a new location is added
-	
-	//framecondition
-	-- cell tower remains the same
-	cell' = cell
-	--alerttype doesn't change 
-	track.alertType' = track.alertType
+	//postconditions
+	last[track'.activeLocation'] = loc -- location has changed
+	ran[track'.towerStrength'] = Level_0 --the towerStrength is now Level_0
+	ran[track'.towerCommunication'] = None --the towerCommunication is now None
+
+	//framecondition --for all vars
+	cell' = cell --cell tower doesn't change
+	track.alertType' = track.alertType --alert type doesn't change
+	some v: Vehicle | track in v.tracker implies v'.engine'.status' = On --engine status stays the same
+	track.status = track'.status' -- status doesn't change
+	track.towerCommunication != track'.towerCommunication' -- towerCommunication changes
+	track.towerStrength != track'.towerStrength' -- towerStrength changes
+	track.activeLocation != track'.activeLocation' -- activeLocation changes
+	cell.location != loc --the cell tower is not in the new out-of-range location
 
 } run LeaveRangeOfCellTower for 7 expect 1
 
