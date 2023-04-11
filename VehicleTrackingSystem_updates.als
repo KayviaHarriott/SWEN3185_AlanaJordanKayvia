@@ -30,7 +30,7 @@ sig TrackingDevice{
 }
 
 abstract sig Alert{}
-one sig Inside, WIthin, Exited, Outside extends Alert {} -- inside means it has entered and is also within  geofence, opposite can be assumed for outside
+one sig Inside, Outside extends Alert {} -- inside means it has entered and is also within  geofence, opposite can be assumed for outside
 
 one sig Map{
 	map: Location -> Location
@@ -444,7 +444,7 @@ pred AlertWhenLeavingGeofence[dev: TrackingDevice, loc: Location, alert: Alert]{
 //English - A function that changes the alert of a tracking device when leaving
 //a geofence
 pred AlertWithGeofence[dev: TrackingDevice, loc: Location, alert: Alert]{
-	--leaving
+//	--leaving
 //	all t1: TrackingDevice | last[t1.activeLocation] not in ran[t1.geofences] 
 //			implies t1.alertType = Outside
 //	all t1: TrackingDevice | t1.alertType = Outside 
@@ -459,6 +459,9 @@ pred AlertWithGeofence[dev: TrackingDevice, loc: Location, alert: Alert]{
 
 
 	//Preconditions
+	--leaving
+	--dev.alert 
+	--alert = Outside
 
 
 	
