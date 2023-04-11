@@ -30,7 +30,7 @@ sig TrackingDevice{
 }
 
 abstract sig Alert{}
-one sig Inside, Outside extends Alert {} -- inside means it has entered and is also within  geofence, opposite can be assumed for outside
+one sig Inside, WIthin, Exited, Outside extends Alert {} -- inside means it has entered and is also within  geofence, opposite can be assumed for outside
 
 one sig Map{
 	map: Location -> Location
@@ -382,14 +382,105 @@ pred LeaveRangeOfCellTower[track: TrackingDevice, cell: CellTower, loc: Location
 	cell.location != loc --the cell tower is not in the new out-of-range location
 } run LeaveRangeOfCellTower for 7 expect 1
 
+//English - A function that changes the weather in a location
+pred ChangeWeatherOfLocation[loc: Location, we: Weather]{
+	//Preconditions	
+	loc.weather != we --the weather of the location isn't the new weather
+	
+
+	//Postconditions
+	loc'.weather' = we --location has changed
+
+
+	//Frameconditions
+
+
+} run ChangeWeatherOfLocation for 7 expect 1
+
+
+//English - A function that changes the weather in a location
+pred ChangeStatusOfDevice[dev: TrackingDevice, stat: Status]{
+	//Preconditions	
+	--status is not the new status
+	
+
+	//Postconditions
+	--status is the new status
+	
+
+
+
+	//Frameconditions
+	
+
+
+} run ChangeWeatherOfLocation for 7 expect 1
+
+//English - A function that changes the alert of a tracking device when leaving
+//a geofence
+pred AlertWhenLeavingGeofence[dev: TrackingDevice, loc: Location, alert: Alert]{
+	all t1: TrackingDevice | last[t1.activeLocation] not in ran[t1.geofences] 
+			implies t1.alertType = Outside -- made changes
+	all t1: TrackingDevice | t1.alertType = Outside 
+			implies last[t1.activeLocation] not in ran[t1.geofences]
+
+	//Preconditions
+
+
+	
+
+	//Postconditions
+	
+
+
+
+	//Frameconditions
+	
+
+
+} run AlertWhenLeavingGeofence for 7 expect 1
+
+--test function
+//English - A function that changes the alert of a tracking device when leaving
+//a geofence
+pred AlertWithGeofence[dev: TrackingDevice, loc: Location, alert: Alert]{
+	--leaving
+//	all t1: TrackingDevice | last[t1.activeLocation] not in ran[t1.geofences] 
+//			implies t1.alertType = Outside
+//	all t1: TrackingDevice | t1.alertType = Outside 
+//			implies last[t1.activeLocation] not in ran[t1.geofences]
+//
+//	//entering
+//	all t1: TrackingDevice | last[t1.activeLocation] in ran[t1.geofences] 
+//		implies t1.alertType = Inside
+//	all t1: TrackingDevice | t1.alertType = Inside 
+//		implies last[t1.activeLocation] in ran[t1.geofences]
+
+
+
+	//Preconditions
+
+
+	
+
+	//Postconditions
+	
+
+
+
+	//Frameconditions
+	
+
+
+} run AlertWhenLeavingGeofence for 7 expect 1
+
 
 pred ChangeAlert[track: TrackingDevice, alert: Alert]{
 
-}
+} run ChangeAlert for 7 expect 1
 
 /**Functions**/
 fun lastLocation: Location { last[TrackingDevice.activeLocation] }
-
 
 
 /**Asserts & Checks**/
