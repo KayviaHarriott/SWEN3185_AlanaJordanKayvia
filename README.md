@@ -59,9 +59,9 @@ sig Map
 - [ ] Verification and Liveness (with fairness) checks for all the applicable constraints on the mutable elements.
 
 ## Changes Made to Add to Doc
-- In CellTower sig, we added Location
-- In TrackingDevice, the we added activeLocation, towerCommunication, towerStrength and removed recentGeofences
-- We are assuming that if an activeLocation of the tracking device is not one of the node/locations in the geofence, it's not inside of the geofence. (Monique: Should have a intersection of where the map and geofence meet)
-- Added facts 'AlertMustHaveReason', 'AlertIfInsideGeofence', 'AlertIfOutsideGeofence
-- Added fact 'OneTowerStrengthTrackingDevice'
-- Added fact 'SameCellTowerInTrackingDevice
+- [ ] In CellTower sig, we added Location
+- [ ] In TrackingDevice, the we added activeLocation, towerCommunication, towerStrength and removed recentGeofences
+- [x] We are assuming that if an activeLocation of the tracking device is not one of the node/locations in the geofence, it's not inside of the geofence. (Monique: Should have a intersection of where the map and geofence meet)
+- [ ] Added facts 'AlertMustHaveReason', 'AlertIfInsideGeofence', 'AlertIfOutsideGeofence
+- [ ] Added fact 'OneTowerStrengthTrackingDevice'
+- [ ] Added fact 'SameCellTowerInTrackingDevice
