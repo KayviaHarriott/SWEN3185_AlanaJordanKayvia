@@ -239,7 +239,7 @@ fact OneTowerStrengthTrackingDevice{
 
 //English - The CellTower in towerCommunication and towerStrength must be the same
 fact SameCellTowerInTrackingDevice{
-	all t: TrackingDevice | dom[t.towerCommunication] = dom[t.towerStrength]
+	all t: TrackingDevice, c: CellTower | c in dom[t.towerCommunication] implies c in dom[t.towerStrength]
 }
 
 //English - Each geofence of a tracking device must have at most 4 Locations
@@ -366,7 +366,8 @@ pred LeaveRangeOfCellTower[track: TrackingDevice, cell: CellTower, loc: Location
 	ran[track'.towerCommunication'] = None --the towerCommunication is now None
 
 	//framecondition --for all vars
-	cell' = cell --cell tower doesn't change
+	cell in dom[track.towerCommunication] && cell in dom[track'.towerCommunication'] --cell tower doesn't change
+	cell in dom[track.towerStrength] && cell in dom[track'.towerStrength'] --cell tower doesn't change
 	track.alertType' = track.alertType --alert type doesn't change
 	some v: Vehicle | track in v.tracker implies v'.engine'.status' = On --engine status stays the same
 	track.status = track'.status' -- status doesn't change
