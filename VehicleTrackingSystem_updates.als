@@ -359,7 +359,10 @@ pred LeaveRangeOfCellTower[track: TrackingDevice, cell: CellTower, loc: Location
 	ran[track.towerCommunication] != None --communication is not equal to None
 	some track.towerCommunication && dom[track.towerCommunication] = cell --tracking device and cell tower has connection
 	some track.towerStrength && dom[track.towerStrength] = cell --shouldn't have a connection to a OtherDevice
-	last[track.activeLocation] != loc --last activeLocation isn't the new one being added
+	--last[track.activeLocation] != loc --last activeLocation isn't the new one being added
+	lastLocation != loc --last activeLocation isn't the new one being added
+	--^^ i think this works, but to ask Monique the difference
+	--active location should only be + 1
 	some v: Vehicle | track in v.tracker implies v.engine.status = On --engine status stays on
 
 	//postconditions
@@ -384,15 +387,23 @@ pred ChangeAlert[track: TrackingDevice, alert: Alert]{
 
 }
 
+/**Functions**/
 fun lastLocation: Location { last[TrackingDevice.activeLocation] }
 
 
 
+/**Asserts & Checks**/
+//English - all tracking devices are properly set up
+assert ValidTrackingDevices{
+	no t: TrackingDevice | t not in Vehicle.tracker
 
+} check ValidTrackingDevices for 7 expect 0
 
-
-
-
+//English - No TrackingDevice should be able to communicate
+//with a OtherDevice if the OtherDevice's permissions are off 
+assert OtherDevicePermissionsOff{
+	no o: OtherDevice | o.permissions = Off && o in ran[TrackingDevice.connection]
+} check OtherDevicePermissionsOff for 7 expect 0
 
 
 
