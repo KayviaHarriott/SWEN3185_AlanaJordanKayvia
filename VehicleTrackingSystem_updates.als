@@ -416,34 +416,10 @@ pred ChangeStatusOfDevice[dev: TrackingDevice, stat: Status]{
 
 } run ChangeWeatherOfLocation for 7 expect 1
 
-//English - A function that changes the alert of a tracking device when leaving
-//a geofence
-pred AlertWhenLeavingGeofence[dev: TrackingDevice, loc: Location, alert: Alert]{
-	all t1: TrackingDevice | last[t1.activeLocation] not in ran[t1.geofences] 
-			implies t1.alertType = Outside -- made changes
-	all t1: TrackingDevice | t1.alertType = Outside 
-			implies last[t1.activeLocation] not in ran[t1.geofences]
-
-	//Preconditions
-
-
-	
-
-	//Postconditions
-	
-
-
-
-	//Frameconditions
-	
-
-
-} run AlertWhenLeavingGeofence for 7 expect 1
-
 --test function
 //English - A function that changes the alert of a tracking device when leaving
 //a geofence
-pred AlertWithGeofence[dev: TrackingDevice, loc: Location, alert: Alert]{
+pred AlertWithGeofence[track: TrackingDevice, loc: Location, alert: Alert]{
 //	--leaving
 //	all t1: TrackingDevice | last[t1.activeLocation] not in ran[t1.geofences] 
 //			implies t1.alertType = Outside
@@ -457,25 +433,44 @@ pred AlertWithGeofence[dev: TrackingDevice, loc: Location, alert: Alert]{
 //		implies last[t1.activeLocation] in ran[t1.geofences]
 
 
-
-	//Preconditions
 	--leaving
-	--dev.alert 
-	--alert = Outside
+	track.alertType = Inside && alert = Outside implies{
+		//Preconditions
+		last[track.activeLocation] != loc --the trackingdevice's last location must be inside the geofence
+		loc not in ran[track.geofences] --the new location is not in the trackingDevice's geofences	
 
+		//Postconditions
+		last[track'.activeLocation'] = loc --the trackingdevice's last location has changed
+		track'.alertType' = alert --the tracking device's alert has changed
 
+		//Frameconditiond
+		track.geofences = track'.geofences' --geofences doesn't change
 	
+	}
 
-	//Postconditions
-	
+	--entering
+	track.alertType = Outside && alert = Inside implies {
+		//Preconditions
+		last[track.activeLocation] != loc --the trackingdevice's last location must be inside the geofence
+		loc in ran[track.geofences] --the new location is not in the trackingDevice's geofences	
 
+		//Postconditions
+		track'.activeLocation' != track.activeLocation -- i think this should be added to 
+		--last[track'.activeLocation'] = loc --the trackingdevice's last location has changed
+		--the new location is in the trackingDevice's geofence
 
+		track'.alertType' = alert --the tracking device's alert has changed
+
+	}
 
 	//Frameconditions
-	
+	track.alertType != alert
+	track.geofences = track'.geofences'
+	track.alertType != track'.alertType'
 
 
-} run AlertWhenLeavingGeofence for 7 expect 1
+
+} run AlertWithGeofence for 7 expect 1
 
 
 pred ChangeAlert[track: TrackingDevice, alert: Alert]{
