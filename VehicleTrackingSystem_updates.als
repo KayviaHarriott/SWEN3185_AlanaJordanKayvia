@@ -248,62 +248,45 @@ fact GeofenceDefinition{
 	--all t: TrackingDevice | #t.geofences = 4
 }
 
-/**/
---Preds Scenarios
-/*1
-The tracking device is far away from the cell tower which means there are no CommunicationTypes available
-and automatically create a connection with another device
-*/
+/**Scenarios**/
+
+/*1 - The tracking device is far away from the cell tower which means there are no CommunicationTypes available
+and automatically create a connection with another device */
 pred ScenarioOne[t1: TrackingDevice]{
 	ran[t1.towerStrength] = Level_0
-} run ScenarioOne for 3 expect 1
+} run ScenarioOne for 7 expect 1
 
-/*2
-Multiple cell towers in a geographic location and at least one tower must be able to identify that
-a tracking device is near a cell tower.
-*/
+/*2 - Multiple cell towers in a geographic location and at least one tower must be able to identify that
+a tracking device is able to have a connection to a cell tower. */
 pred ScenarioTwo[c: CellTower]{
-	--gt[#Vehicle,1]
-	gt[#TrackingDevice,1]
+	some TrackingDevice
 	gt[#CellTower,1]
-	--some TrackingDevice.communicationType.c 
 } run ScenarioTwo for 7 expect 1
 
-/*3
-The tracking device is near a cell tower,
-but the weather condition is bad resulting in poor or okay experience.
-*/
+/*3 - The tracking device is near a cell tower,
+but the weather condition is bad resulting in poor or okay experience. */
 pred ScenarioThree[t: TrackingDevice]{
-	--need to modify how we target the range
-	//dom[t.range] = Level_3
-	--need to change to location of tracking device
-	--t.weather = UnsuitableWeather
+	ran[t.towerStrength] = Level_3 
+			or  ran[t.towerStrength] = Level_4
+	last[t.activeLocation].weather = UnsuitableWeather
 } run ScenarioThree for 7 expect 1
 
-/*4 - Vehicle has left geofence and should have an alert 
-*/
-/*
+/*4 - Vehicle has left geofence and should have an alert */
 pred ScenarioFour[t: TrackingDevice]{
-	--some t.recentGeofence
+	last[t.activeLocation] not in ran[t.geofences]
 } run ScenarioFour for 7 expect 1
-*/
-
-//Alana change
-pred ScenarioFour[t: TrackingDevice]{ --made changes
---	some t.activeGeofence'
-} run ScenarioFour for 7 expect 1
-
 
 /*5 - The tracking device is near a cell tower, outside of it's geofence, 
-weather condition is good and the tracking device supports LTE
+weather condition is suitable and the tracking device supports LTE
 */
 pred ScenarioFive[t: TrackingDevice]{
-	--need to modify how we target the range
-	--dom[t.range] = Level_4
-	--some t.recentGeofence
-	--need to change to location of tracking device
-	--t.weather = SuitableWeather
-
+	ran[t.towerStrength] = Level_4
+	last[t.activeLocation] not in ran[t.geofences]
+	last[t.activeLocation].weather = SuitableWeather
+	let cell = dom[t.towerCommunication] {
+		cell.location.weather = SuitableWeather
+	}
+	
 } run ScenarioFive for 7 expect 1
 
 //English - One a tracking device leaves it's geofence,
@@ -471,7 +454,6 @@ pred AlertWithGeofence[track: TrackingDevice, loc: Location, alert: Alert]{
 
 
 } run AlertWithGeofence for 7 expect 1
-
 
 pred ChangeAlert[track: TrackingDevice, alert: Alert]{
 
