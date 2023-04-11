@@ -55,7 +55,7 @@ sig Map
     - Changing status (Alana)
     - Changing alert (Kayvia)
 - [ ] Function that gets the last location
-- Each person write two checks 
+- [ ] Each person write two checks 
 - [ ] Verification and Liveness (with fairness) checks for all the applicable constraints on the mutable elements.
 
 ## Changes Made to Add to Doc
