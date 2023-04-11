@@ -40,9 +40,12 @@
 
 ### Facts
 sig TrackingDevice
-[ ] 'geofences', each geofence should be limited to 4 Locations
-[ ] 'activeLocation', for each Location, the next Location added should not be equal to the prev location.
-[ ] The Map should have all locations/nodes of the geofences
+
+- [ ] 'geofences', each geofence should be limited to 4 Locations
+- [ ] 'activeLocation', for each Location, the next Location added should not be equal to the prev location.
+
+sig Map
+- [ ] Map should have all locations/nodes of the geofences
 
 ### General
 - [ ] Look at scenarios
