@@ -73,15 +73,14 @@ fact {
 
 pred sanityCheck[
 ]{
-	#TrackingDevice > 1
---	#Location = 4
-	--some TrackingDevice.communicationType
+	one TrackingDevice
+	some towerCommunication
+	some towerStrength
+
 
 } run sanityCheck for 7 expect 1
 
-
 /**Facts**/
-
 //English - Every vehicle has a unique engine
 fact EachVehicleUniqueEngine{
 	all disj v1, v2: Vehicle | v1.engine != v2.engine
@@ -99,8 +98,6 @@ fact EachTrackingDeviceLinkedToAVehicle{
 
 //English - All tracking devices must have a communicationType to a cell tower
 fact AllTrackingDeviceHaveCommunicationType{
-	--may need to modify, do we mean it can only be connected to one cell tower?
-	-- prob not, so maybe one type of communication to a cell tower
 	all t1: TrackingDevice | one t1.towerCommunication
 }
 
@@ -162,7 +159,7 @@ fact VehicleEngineStatusOffTrackingDeviceOff {
 --EDGE, LTE, 3G, 4G
 fact CommunicationRelationToLocationOutOfRange { 
 	all t: TrackingDevice | ran[t.towerStrength] = Level_0 implies ran[t.towerCommunication] = None and t.experience = Poor
-	--wee need to edit this, forgot what it means--all t: TrackingDevice | no ran[t.communicationType] implies ran[t.communicationType] = Level_0
+	all t: TrackingDevice | no ran[t.towerCommunication] implies ran[t.towerStrength] = Level_0 --unsure if i corrected this properly
 	all t: TrackingDevice | ran[t.towerStrength] = Level_1 implies t.experience = Poor
 
 	all t: TrackingDevice | ran[t.towerStrength] = Level_2 and ran[t.towerCommunication] = EDGE implies t.experience = Poor
@@ -194,7 +191,6 @@ fact AutomaticallyCommunicateWithOtherDevice{
 }
 
 fact WeatherAffectingCommunication{
-	--need to change to location of tracking device
 	//Bad weather
 	all t: TrackingDevice |  (last[t.activeLocation].weather = BadWeather and dom[t.towerCommunication].originalCommunication = EDGE) implies ran[t.towerCommunication]= None
 	all t: TrackingDevice |  (last[t.activeLocation].weather = BadWeather and dom[t.towerCommunication].originalCommunication = Com_3G) implies ran[t.towerCommunication] = EDGE
@@ -213,18 +209,14 @@ fact WeatherAffectingCommunication{
 //All locations in a geofence have the same weather
 fact GeofenceLocationSameWeather{
 	all t:TrackingDevice | #dom[t.geofences].weather = 1  
-					//and #dom[t.geofences].weather = 1 
-}
-
-//English - 
-fact GeofencePreviousLocationNotLastLocation {
---	all t: TrackingDevice | #t.activeLocation > 1 
-	--			implies (prev[t.activeLocation] != last[t.activeLocation])
-	--go through and check if it has a next and the next is not equal to the current
 }
 
 //English - 
 fact ActiveGeofencePreviousLocationNotLastLocation {
+--	all t: TrackingDevice | #t.activeLocation > 1 
+	--			implies (prev[t.activeLocation] != last[t.activeLocation])
+	--go through and check if it has a next and the next is not equal to the current
+
 	--for testing
 	//#TrackingDevice.activeLocation = 4
 	--all t: TrackingDevice | #t.activeLocation > 1 
@@ -239,6 +231,21 @@ fact ActiveGeofencePreviousLocationNotLastLocation {
 			--					implies t.activeLocation[i] != t.activeLocation[i-1]
 }
 
+//English - Each tracking device can only have one tower strength to a cell tower
+fact OneTowerStrengthTrackingDevice{
+	all t: TrackingDevice | some t.towerCommunication implies one t.towerStrength
+}
+
+//English - The CellTower in towerCommunication and towerStrength must be the same
+fact SameCellTowerInTrackingDevice{
+	all t: TrackingDevice | dom[t.towerCommunication] = dom[t.towerStrength]
+}
+
+//English - Each geofence of a tracking device must have at most 4 Locations
+fact GeofenceDefinition{
+	--unsure if this works
+	--all t: TrackingDevice | #t.geofences = 4
+}
 
 /**/
 --Preds Scenarios

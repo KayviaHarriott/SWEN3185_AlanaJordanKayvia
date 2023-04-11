@@ -62,4 +62,6 @@ sig Map
 - In CellTower sig, we added Location
 - In TrackingDevice, the we added activeLocation, towerCommunication, towerStrength and removed recentGeofences
 - We are assuming that if an activeLocation of the tracking device is not one of the node/locations in the geofence, it's not inside of the geofence. (Monique: Should have a intersection of where the map and geofence meet)
-- We added facts 'AlertMustHaveReason', 'AlertIfInsideGeofence', 'AlertIfOutsideGeofence
+- Added facts 'AlertMustHaveReason', 'AlertIfInsideGeofence', 'AlertIfOutsideGeofence
+- Added fact 'OneTowerStrengthTrackingDevice'
+- Added fact 'SameCellTowerInTrackingDevice
