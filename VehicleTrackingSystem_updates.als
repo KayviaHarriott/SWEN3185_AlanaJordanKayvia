@@ -306,6 +306,8 @@ pred ScenarioFive[t: TrackingDevice]{
 
 } run ScenarioFive for 7 expect 1
 
+//English - One a tracking device leaves it's geofence,
+//it sends the alert 'Outside'
 pred leaveGeofence[t: TrackingDevice, l: Location] {
 	//preconditions
 	some t.activeLocation
@@ -314,7 +316,7 @@ pred leaveGeofence[t: TrackingDevice, l: Location] {
 	t.alertType = Inside
 
 	//post conditions
---	last[t'.activeLocation] = l
+	--last[t'.activeLocation] = l
 	t'.alertType = Outside
 
 	//frameconditions - todo
@@ -375,10 +377,14 @@ pred LeaveRangeOfCellTower[track: TrackingDevice, cell: CellTower, loc: Location
 	track.towerStrength != track'.towerStrength' -- towerStrength changes
 	track.activeLocation != track'.activeLocation' -- activeLocation changes
 	cell.location != loc --the cell tower is not in the new out-of-range location
-
 } run LeaveRangeOfCellTower for 7 expect 1
 
 
+pred ChangeAlert[track: TrackingDevice, alert: Alert]{
+
+}
+
+fun lastLocation: Location { last[TrackingDevice.activeLocation] }
 
 
 
