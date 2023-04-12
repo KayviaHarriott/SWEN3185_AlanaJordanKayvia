@@ -59,9 +59,13 @@ sig Map
 - [ ] Verification and Liveness (with fairness) checks for all the applicable constraints on the mutable elements.
 
 ## Changes Made to Add to Doc
-- [ ] In CellTower sig, we added Location
+- [x] In CellTower sig, we added Location
 - [ ] In TrackingDevice, the we added activeLocation, towerCommunication, towerStrength and removed recentGeofences
 - [x] We are assuming that if an activeLocation of the tracking device is not one of the node/locations in the geofence, it's not inside of the geofence. (Monique: Should have a intersection of where the map and geofence meet)
 - [ ] Added facts 'AlertMustHaveReason', 'AlertIfInsideGeofence', 'AlertIfOutsideGeofence
 - [ ] Added fact 'OneTowerStrengthTrackingDevice'
 - [ ] Added fact 'SameCellTowerInTrackingDevice
+- [ ] We changed reference to 5G and made 4G the highest type of communication available
+- [ ] Assuming that Poor experience may reference no experience at all
+- [ ] Geofences are kept in device history after turned off by monitoring center
+- [ ] All cell towers we're dealing with are in the map
