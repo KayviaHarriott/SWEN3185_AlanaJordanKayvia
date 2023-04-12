@@ -25,7 +25,7 @@ sig TrackingDevice{
 	connection: Location -> OtherDevice, 
 	geofences: Location -> Location, --fact where each location has only 4 location
 	var activeLocation: seq Location,
-	experience: one Experience,
+	var experience: one Experience,
 	var alertType: Alert
 }
 
@@ -46,8 +46,6 @@ sig CellTower{
 	originalCommunication: Communication,
 	location: Location
 }
-
-
 
 abstract sig Communication{}
 one sig None, EDGE, Com_3G, Com_4G, LTE extends Communication{} 
@@ -155,14 +153,18 @@ fact VehicleEngineStatusOffTrackingDeviceOff {
 	all t1: TrackingDevice, veh: Vehicle |  veh.engine.status = Off implies t1.status = Off
 }
 
+//English - TrackingDevice can only communication with one cell tower at a time
+fact TrackingDeviceOneCommunicationToCellTower{
+	all t: TrackingDevice, cell: CellTower | cell in dom[t.towerCommunication] implies cell in dom[t.towerStrength]
+}
+
 //English - A tracking device must only communicate with the cell tower in a specific
 //type of communication based on its location to the cell tower i.e. Best - 4G and LTE,
 //Acceptable - 3G, 4G, and LTE, Low - 3G and Edge and Out_Of_Range - None
 --EDGE, LTE, 3G, 4G
 fact CommunicationRelationToLocationOutOfRange { 
 	all t: TrackingDevice | ran[t.towerStrength] = Level_0 implies ran[t.towerCommunication] = None and t.experience = Poor
-	all t: TrackingDevice | (no ran[t.towerCommunication] implies ran[t.towerStrength] = Level_0) --unsure if i corrected this properly
-		--	and (ran[t.towerStrength] = Level_0 implies ran[t.towerCommunication] = None) --unsure if needed
+	all t: TrackingDevice | ran[t.towerCommunication] = None implies ran[t.towerStrength] = Level_0
 	all t: TrackingDevice | ran[t.towerStrength] = Level_1 implies t.experience = Poor
 
 	all t: TrackingDevice | ran[t.towerStrength] = Level_2 and ran[t.towerCommunication] = EDGE implies t.experience = Poor
@@ -179,7 +181,9 @@ fact CommunicationRelationToLocationOutOfRange {
 	all t: TrackingDevice | ran[t.towerStrength] = Level_4 and ran[t.towerCommunication] = Com_3G implies t.experience = Good
 	all t: TrackingDevice | ran[t.towerStrength] = Level_4 and ran[t.towerCommunication] = Com_4G implies t.experience = Excellent
 	all t: TrackingDevice | ran[t.towerStrength] = Level_4 and ran[t.towerCommunication] = LTE implies t.experience = Excellent
+
 }
+
 
 //English - The tracking device may only communicate with a 'other device' if 
 //the tracking device is Out_Of_Range to a cell tower.
@@ -248,19 +252,6 @@ fact SameCellTowerInTrackingDevice{
 fact GeofenceDefinition{
 	--unsure if this works
 	--all t: TrackingDevice | #t.geofences = 4
-}
-
-//English - the tracking device should not have a tower communication or
-//tower strength if off
-fact TrackingDeviceOff{
-	all t: TrackingDevice | t.status = Off 
-		implies (no t.towerCommunication && no t.towerStrength)
-
-}
-
-//English - All cell tower locations are in map
-fact allCommunicatingCellTowersInMap{
-	all cell: CellTower | cell.location in ran[Map.map]
 }
 
 /**Scenarios**/
@@ -366,7 +357,9 @@ pred LeaveRangeOfCellTower[track: TrackingDevice, cell: CellTower, loc: Location
 	//postconditions
 	last[track'.activeLocation'] = loc -- location has changed
 	ran[track'.towerStrength'] = Level_0 --the towerStrength is now Level_0
-	ran[track'.towerCommunication'] = None --the towerCommunication is now None
+	ran[track'.towerCommunication'] = None --the towerCommunication is now None	
+	--track'.towerCommunication
+
 
 	//framecondition --for all vars
 	cell in dom[track.towerCommunication] && cell in dom[track'.towerCommunication'] --cell tower doesn't change
@@ -378,8 +371,29 @@ pred LeaveRangeOfCellTower[track: TrackingDevice, cell: CellTower, loc: Location
 	track.towerStrength != track'.towerStrength' -- towerStrength changes
 	track.activeLocation != track'.activeLocation' -- activeLocation changes
 	cell.location != loc --the cell tower is not in the new out-of-range location
+	--dom[track.towerCommunication] = dom[track'.towerCommunication']
+
 } run LeaveRangeOfCellTower for 7 expect 1
 
+//English - A function that changes the weather in a location
+pred ChangeWeatherOfLocation[loc: Location, we: Weather]{
+	//Preconditions	
+	loc.weather != we --the weather of the location isn't the new weather
+	
+
+	//Postconditions
+	loc'.weather' = we --location has changed
+
+
+	//Frameconditions
+
+
+} run ChangeWeatherOfLocation for 7 expect 1
+
+
+fact allCommunicatingCellTowersInMap{
+	all cell: CellTower | cell.location in ran[Map.map]
+}
 
 //English - A function that changes the status of the tracking device
 pred ChangeStatusOfDevice[dev: TrackingDevice, veh: Vehicle]{
@@ -390,7 +404,7 @@ pred ChangeStatusOfDevice[dev: TrackingDevice, veh: Vehicle]{
 		no dev.towerCommunication -- No Tower Communication
 		no dev.towerStrength -- No Tower Strength
 		no dev.activeLocation -- No Active Location
-		no dev.alertType -- No Alert type
+		no dev.alertType -- NO Alert type
 		no dev.experience -- No Experience
 		no dev.geofences -- No geofences should be available
 		no dev.connection -- No connection to any other device should be possible
@@ -409,9 +423,12 @@ pred ChangeStatusOfDevice[dev: TrackingDevice, veh: Vehicle]{
 		no dev'.towerCommunication' -- No Tower Communication
 		no dev'.towerStrength' -- No Tower Strength
 		no dev'.activeLocation' -- No Active Location
+	--	no dev'.experience' -- No Experience
+	--	no dev'.geofences' -- No geofences should be available
 		no dev'.connection' -- No connection to any other device should be possible
+	--	no dev'.experience'
 
-		//Framecondition
+		//Framcondition
 		dev.alertType = dev'.alertType'--alert type stays the same
 	
 	}
@@ -426,6 +443,19 @@ pred ChangeStatusOfDevice[dev: TrackingDevice, veh: Vehicle]{
 //English - A function that changes the alert of a tracking device when leaving
 //a geofence
 pred AlertWithGeofence[track: TrackingDevice, loc: Location, alert: Alert]{
+//	--leaving
+//	all t1: TrackingDevice | last[t1.activeLocation] not in ran[t1.geofences] 
+//			implies t1.alertType = Outside
+//	all t1: TrackingDevice | t1.alertType = Outside 
+//			implies last[t1.activeLocation] not in ran[t1.geofences]
+//
+//	//entering
+//	all t1: TrackingDevice | last[t1.activeLocation] in ran[t1.geofences] 
+//		implies t1.alertType = Inside
+//	all t1: TrackingDevice | t1.alertType = Inside 
+//		implies last[t1.activeLocation] in ran[t1.geofences]
+
+
 	--leaving
 	track.alertType = Inside && alert = Outside implies{
 		//Preconditions
@@ -461,6 +491,8 @@ pred AlertWithGeofence[track: TrackingDevice, loc: Location, alert: Alert]{
 	track.geofences = track'.geofences'
 	track.alertType != track'.alertType'
 
+
+
 } run AlertWithGeofence for 7 expect 1
 
 pred ChangeAlert[track: TrackingDevice, alert: Alert]{
@@ -473,9 +505,10 @@ fun lastLocation: Location { last[TrackingDevice.activeLocation] }
 
 /**Asserts & Checks**/
 //English - all tracking devices are properly set up
-// assert ValidTrackingDevices{
-// 	no t: TrackingDevice | t not in Vehicle.tracker
-// } check ValidTrackingDevices for 7 expect 0
+assert ValidTrackingDevices{
+	no t: TrackingDevice | t not in Vehicle.tracker
+
+} check ValidTrackingDevices for 7 expect 0
 
 //English - No TrackingDevice should be able to communicate
 //with a OtherDevice if the OtherDevice's permissions are off 
@@ -483,37 +516,17 @@ assert OtherDevicePermissionsOff{
 	no o: OtherDevice | o.permissions = Off && o in ran[TrackingDevice.connection]
 } check OtherDevicePermissionsOff for 7 expect 0
 
-//In order for a tracking device to communicate with a cell tower
-//has a status of towercommunication, tower strength, connection,
-//geofence , activelocation experience and alertt
---if trackign device is off or not properly connected (having an engine)
---it shouldn't be able to do the above
+fact TrackingDeviceOff{
+	all t: TrackingDevice | t.status = Off 
+		implies (no t.towerCommunication && no t.towerStrength)
 
---There is no tracking device that is not connected to a vehicle and is able to have the above (status of towercommunication, tower strength, connection,
-//geofence , activelocation experience and alertt)
+}
 
---tracking connected vehicle
---and (this other stuff)
 
 assert TrackingDeviceOffProperties{
 	no t:TrackingDevice  | (t.status = Off )
 		&& (some t.towerCommunication or some t.towerStrength or some t.connection or some t.experience or some t.alertType or
 			some t.geofences or some t.activeLocation ) 
 } check TrackingDeviceOffProperties for 7 expect 0
-
-//English - A tracking device should not have more than 4 locations
-assert NoMoreThanFourLocations{
-	no t:TrackingDevice | gt[#t.geofences,4] and lt[#t.geofences,4]
-} check NoMoreThanFourLocations for 7 expect 0
-
-//English - A tracking device should not have more than 1 activeLocation
-assert OnlyOneActiveLocation{
-	no t:TrackingDevice | gt[#t.activeLocation,1] and lt[#t.activeLocation,1]
-} check OnlyOneActiveLocation for 7 expect 0
-
-
-
-
-
 
 
