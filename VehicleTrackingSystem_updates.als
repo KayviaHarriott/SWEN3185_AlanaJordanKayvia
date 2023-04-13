@@ -440,20 +440,8 @@ fun lastLocation: Location { last[TrackingDevice.activeLocation] }
 
 
 /**Asserts & Checks**/
---Verification and Liveness (with fairness) checks for all 
---the applicable constraints on the mutable elements.
-
---Specify weak fairness using
---(eventually always p)implies (always eventually event[...])
---Specify strong fairness using
---(always eventually p)implies (always eventually event[...])
-
---safety property uses always
---liveness property uses eventually
---fairness property uses always and eventually
 
 --Engine
---var status: Status
 assert EngineAlwaysStatus {
 	always no e: Engine | no e.status
 } 
@@ -461,18 +449,6 @@ check EngineAlwaysStatus for 7 expect 0
 
 
 --TrackingDevice
-/*	var status: Status,
-	var towerCommunication: CellTower -> Communication,
-	var towerStrength: CellTower -> SignalStrength,
-	var connection: Location -> OtherDevice
-	var activeLocation: seq Location,
-	var experience: one Experience,
-	var alertType: Alert
-*/
---safety property uses always
---liveness property uses eventually
---fairness property uses always and eventually
---the active location leave geofence means it willchnage alert
 assert LeaveGeofence {
 	 no t: TrackingDevice | (last[t.activeLocation] in dom[t.geofences]) and
 			t.alertType = Outside
