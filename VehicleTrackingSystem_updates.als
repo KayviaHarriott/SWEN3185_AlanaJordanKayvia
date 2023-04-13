@@ -291,52 +291,11 @@ pred ScenarioFive[t: TrackingDevice]{
 	
 } run ScenarioFive for 7 expect 1
 
-//English - One a tracking device leaves it's geofence,
-//it sends the alert 'Outside'
-pred leaveGeofence[t: TrackingDevice, l: Location] {
-	//preconditions
-	some t.activeLocation
-	some l & (dom[Map.map] + ran[Map.map])
-	l not in ran[t.geofences]
-	t.alertType = Inside
-
-	//post conditions
-	--last[t'.activeLocation] = l
-	t'.alertType = Outside
-
-	//frameconditions - todo
-
-} run leaveGeofence for 7 expect 1
-
-	
-//English - Disconnecting a OtherDevice from a connected TrackingDevice if the OtherDevice's
-//permissions changes from On to Off
-pred DisconnectFromTrackingDevicePermissionsChange[other: OtherDevice, track: TrackingDevice]{
-	//preconditions
-	other.permissions = On
-	other in ran[track.connection]
-	track.status = On
-	ran[track.towerCommunication] = None
-	ran[track.towerStrength] = Level_0
-
-
-	//postconditions
-	other'.permissions' = Off
-	other not in ran[track'.connection']
-	no other.range
-	ran[track.towerCommunication] != None --added
-	
-
-	//frame
-	track' = track
-	other' = other
-	other.communicationType = other'.communicationType'
-
-} run DisconnectFromTrackingDevicePermissionsChange for 7 expect 1
-
-//English - A function that takes a tracking device, cell tower and location,
-//the location is the new location of the tracking device which is outside the range of
-//the cell tower
+/**Operations**/
+/*Operation 1
+English - A function that takes a tracking device, cell tower and location,
+the location is the new location of the tracking device which is outside the range of
+the cell tower*/
 pred LeaveRangeOfCellTower[track: TrackingDevice, cell: CellTower, loc: Location]{
 	//preconditions
 	track.status = On --tracking device status is on
@@ -344,17 +303,13 @@ pred LeaveRangeOfCellTower[track: TrackingDevice, cell: CellTower, loc: Location
 	ran[track.towerCommunication] != None --communication is not equal to None
 	some track.towerCommunication && dom[track.towerCommunication] = cell --tracking device and cell tower has connection
 	some track.towerStrength && dom[track.towerStrength] = cell --shouldn't have a connection to a OtherDevice
-	--last[track.activeLocation] != loc --last activeLocation isn't the new one being added
 	lastLocation != loc --last activeLocation isn't the new one being added
-	--^^ i think this works, but to ask Monique the difference
-	--active location should only be + 1
 	some v: Vehicle | track in v.tracker implies v.engine.status = On --engine status stays on
 
 	//postconditions
 	last[track'.activeLocation'] = loc -- location has changed
 	ran[track'.towerStrength'] = Level_0 --the towerStrength is now Level_0
-	ran[track'.towerCommunication'] = None --the towerCommunication is now None	
-	--track'.towerCommunication
+	ran[track'.towerCommunication'] = None --the towerCommunication is now None
 
 
 	//framecondition --for all vars
@@ -367,29 +322,12 @@ pred LeaveRangeOfCellTower[track: TrackingDevice, cell: CellTower, loc: Location
 	track.towerStrength != track'.towerStrength' -- towerStrength changes
 	track.activeLocation != track'.activeLocation' -- activeLocation changes
 	cell.location != loc --the cell tower is not in the new out-of-range location
-	--dom[track.towerCommunication] = dom[track'.towerCommunication']
+	dom[track.towerCommunication] = dom[track'.towerCommunication']
 
 } run LeaveRangeOfCellTower for 7 expect 1
 
-//English - A function that changes the weather in a location
-pred ChangeWeatherOfLocation[loc: Location, we: Weather]{
-	//Preconditions	
-	loc.weather != we --the weather of the location isn't the new weather
-	
-
-	//Postconditions
-	loc'.weather' = we --location has changed
-
-
-	//Frameconditions
-
-
-} run ChangeWeatherOfLocation for 7 expect 1
-
-
-
-
-//English - A function that changes the status of the tracking device
+/*Operation 2
+English - A function that changes the status of the tracking device*/
 pred ChangeStatusOfDevice[dev: TrackingDevice, veh: Vehicle]{
 	dev.status = Off implies {
 		//Precondition
@@ -417,13 +355,11 @@ pred ChangeStatusOfDevice[dev: TrackingDevice, veh: Vehicle]{
 		no dev'.towerCommunication' -- No Tower Communication
 		no dev'.towerStrength' -- No Tower Strength
 		no dev'.activeLocation' -- No Active Location
-	--	no dev'.experience' -- No Experience
-	--	no dev'.geofences' -- No geofences should be available
+		dev'.experience' = Poor -- Experience is poor
 		no dev'.connection' -- No connection to any other device should be possible
-	--	no dev'.experience'
 
 		//Framcondition
-		dev.alertType = dev'.alertType'--alert type stays the same
+		dev.alertType = dev'.alertType' --alert type stays the same
 	
 	}
 
@@ -433,23 +369,11 @@ pred ChangeStatusOfDevice[dev: TrackingDevice, veh: Vehicle]{
 	
 } run ChangeStatusOfDevice for 7 expect 1
 
---test function
-//English - A function that changes the alert of a tracking device when leaving
-//a geofence
+
+/*Operation 3
+English - A function that changes the alert of a tracking device when leaving
+a geofence */
 pred AlertWithGeofence[track: TrackingDevice, loc: Location, alert: Alert]{
-//	--leaving
-//	all t1: TrackingDevice | last[t1.activeLocation] not in ran[t1.geofences] 
-//			implies t1.alertType = Outside
-//	all t1: TrackingDevice | t1.alertType = Outside 
-//			implies last[t1.activeLocation] not in ran[t1.geofences]
-//
-//	//entering
-//	all t1: TrackingDevice | last[t1.activeLocation] in ran[t1.geofences] 
-//		implies t1.alertType = Inside
-//	all t1: TrackingDevice | t1.alertType = Inside 
-//		implies last[t1.activeLocation] in ran[t1.geofences]
-
-
 	--leaving
 	track.alertType = Inside && alert = Outside implies{
 		//Preconditions
@@ -460,9 +384,6 @@ pred AlertWithGeofence[track: TrackingDevice, loc: Location, alert: Alert]{
 		last[track'.activeLocation'] = loc --the trackingdevice's last location has changed
 		track'.alertType' = alert --the tracking device's alert has changed
 
-		//Frameconditiond
-		track.geofences = track'.geofences' --geofences doesn't change
-	
 	}
 
 	--entering
@@ -472,10 +393,7 @@ pred AlertWithGeofence[track: TrackingDevice, loc: Location, alert: Alert]{
 		loc in ran[track.geofences] --the new location is not in the trackingDevice's geofences	
 
 		//Postconditions
-		track'.activeLocation' != track.activeLocation -- i think this should be added to 
-		--last[track'.activeLocation'] = loc --the trackingdevice's last location has changed
-		--the new location is in the trackingDevice's geofence
-
+		last[track'.activeLocation'] = loc--the tracking device's location has changed
 		track'.alertType' = alert --the tracking device's alert has changed
 
 	}
@@ -484,20 +402,40 @@ pred AlertWithGeofence[track: TrackingDevice, loc: Location, alert: Alert]{
 	track.alertType != alert
 	track.geofences = track'.geofences'
 	track.alertType != track'.alertType'
-
-
+	track.status = track'.status'
+	track.towerCommunication = track'.towerCommunication'
+	track.towerStrength = track'.towerStrength'
+	track.activeLocation != track'.activeLocation'
+	track.experience = track'.experience'
+	track.alertType != track'.alertType'
+	track.geofences = track'.geofences'
 
 } run AlertWithGeofence for 7 expect 1
 
-pred ChangeAlert[track: TrackingDevice, alert: Alert]{
 
-} run ChangeAlert for 7 expect 1
+/*Operation 4
+English - A function that changes the weather of a location*/
+pred ChangeWeatherOfLocation[loc: Location, we: Weather]{
+	//Preconditions	
+	loc.weather != we --the weather of the location isn't the new weather
+	loc in ran[Map.map] -- the location must exist in the map
+
+	//Postconditions
+	loc'.weather' = we --location has changed
+
+	//Frameconditions
+	loc.weather != loc'.weather'
+
+} run ChangeWeatherOfLocation for 5 expect 1
+
 
 /**Functions**/
 fun lastLocation: Location { last[TrackingDevice.activeLocation] }
 
 
 /**Asserts & Checks**/
+--Verification and Liveness (with fairness) checks for all theapplicable constraints on the mutable elements.
+
 //English - all tracking devices are properly set up
 assert ValidTrackingDevices{
 	no t: TrackingDevice | t not in Vehicle.tracker
