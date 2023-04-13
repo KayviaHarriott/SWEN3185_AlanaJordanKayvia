@@ -22,7 +22,7 @@ sig TrackingDevice{
 	var status: Status,
 	var towerCommunication: CellTower -> Communication,
 	var towerStrength: CellTower -> SignalStrength,
-	connection: Location -> OtherDevice, 
+	var connection: Location -> OtherDevice, 
 	geofences: Location -> Location, --fact where each location has only 4 location
 	var activeLocation: seq Location,
 	var experience: one Experience,
@@ -246,8 +246,14 @@ fact allCommunicatingCellTowersInMap{
 	all cell: CellTower | cell.location in ran[Map.map]
 }
 
+//English - Only one map exists in the system
 fact OneMapExists{
 	one Map
+}
+
+//English - If a tracking device's status is off, it must have no connect to a OtherDevice
+fact NoConnectionToOtherDeviceIfTrackingDeviceStatusOff{
+	all t: TrackingDevice | t.status = Off implies no t.connection
 }
 
 /**Scenarios**/
@@ -434,31 +440,94 @@ fun lastLocation: Location { last[TrackingDevice.activeLocation] }
 
 
 /**Asserts & Checks**/
---Verification and Liveness (with fairness) checks for all theapplicable constraints on the mutable elements.
+--Verification and Liveness (with fairness) checks for all 
+--the applicable constraints on the mutable elements.
 
-//English - all tracking devices are properly set up
+--Specify weak fairness using
+--(eventually always p)implies (always eventually event[...])
+--Specify strong fairness using
+--(always eventually p)implies (always eventually event[...])
+
+--safety property uses always
+--liveness property uses eventually
+--fairness property uses always and eventually
+
+--Engine
+--var status: Status
+assert EngineAlwaysStatus {
+	always no e: Engine | no e.status
+} 
+check EngineAlwaysStatus for 7 expect 0
+
+
+--TrackingDevice
+/*	var status: Status,
+	var towerCommunication: CellTower -> Communication,
+	var towerStrength: CellTower -> SignalStrength,
+	var connection: Location -> OtherDevice
+	var activeLocation: seq Location,
+	var experience: one Experience,
+	var alertType: Alert
+*/
+--safety property uses always
+--liveness property uses eventually
+--fairness property uses always and eventually
+--the active location leave geofence means it willchnage alert
+assert LeaveGeofence {
+	 no t: TrackingDevice | (last[t.activeLocation] in dom[t.geofences]) and
+			t.alertType = Outside
+} check LeaveGeofence for 7 expect 0
+
+assert AlwaysHaveExperience {
+	always eventually all t: TrackingDevice | some t.experience	
+} check AlwaysHaveExperience for 7 expect 0
+
+assert TrackingDeviceAlwaysStatus {
+	always no t: TrackingDevice | no t.status
+} 
+check TrackingDeviceAlwaysStatus for 7 expect 0
+
 assert ValidTrackingDevices{
-	no t: TrackingDevice | t not in Vehicle.tracker
-
+	always no t: TrackingDevice | t not in Vehicle.tracker
 } check ValidTrackingDevices for 7 expect 0
 
-//English - No TrackingDevice should be able to communicate
-//with a OtherDevice if the OtherDevice's permissions are off 
+assert DeviceStatusChange{
+	always no t: TrackingDevice, v: Vehicle | v.tracker != t && ChangeStatusOfDevice[t,v]
+} check DeviceStatusChange for 7 expect 0
+
+assert DeviceStatusChangeAfter{
+	always no t: TrackingDevice, v: Vehicle | ChangeStatusOfDevice[t,v] && t.status = t'.status'
+} check DeviceStatusChangeAfter for 7 expect 0
+
+
+--OtherDevice
+assert OtherDeviceAlwaysPermissions {
+	always no oth: OtherDevice | no oth.permissions
+} 
+check OtherDeviceAlwaysPermissions for 7 expect 0
+
 assert OtherDevicePermissionsOff{
 	no o: OtherDevice | o.permissions = Off && o in ran[TrackingDevice.connection]
 } check OtherDevicePermissionsOff for 7 expect 0
 
-fact TrackingDeviceOff{
-	all t: TrackingDevice | t.status = Off 
-		implies (no t.towerCommunication && no t.towerStrength)
 
+
+--sig Location 
+assert LocationAlwaysWeather {
+	always no l: Location | no l.weather
+} 
+check LocationAlwaysWeather for 7 expect 0
+
+assert LocationChangeWeather {
+	always no loc: Location, we: Weather | ChangeWeatherOfLocation[loc,we] and loc.weather = we
 }
+check LocationChangeWeather for 7 expect 0
 
 
 assert TrackingDeviceOffProperties{
 	no t:TrackingDevice  | (t.status = Off )
-		&& (some t.towerCommunication or some t.towerStrength or some t.connection or some t.experience or some t.alertType or
-			some t.geofences or some t.activeLocation ) 
+		&& (some t.connection) 
 } check TrackingDeviceOffProperties for 7 expect 0
+
 
 
