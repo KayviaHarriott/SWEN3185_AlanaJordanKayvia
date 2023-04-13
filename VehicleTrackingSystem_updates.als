@@ -123,13 +123,13 @@ fact AlertMustHaveReason{
 	all t: TrackingDevice | some t.alertType implies some t.activeLocation
 }
 
-//English - 
+//English - If the tracking device’s active location is inside its geofence, the alert type must be ‘Inside’.
 fact AlertIfInsideGeofence{ 
 	all t1: TrackingDevice | last[t1.activeLocation] in ran[t1.geofences] implies t1.alertType = Inside -- made changes
 	all t1: TrackingDevice | t1.alertType = Inside implies last[t1.activeLocation] in ran[t1.geofences]
 }
 
-//English - 
+//English - If the tracking device’s active location is outside its geofence, the alert type must be ‘Outside’.
 fact AlertIfOutsideGeofence{ 
 	all t1: TrackingDevice | last[t1.activeLocation] not in ran[t1.geofences] implies t1.alertType = Outside -- made changes
 	all t1: TrackingDevice | t1.alertType = Outside implies last[t1.activeLocation] not in ran[t1.geofences]
@@ -140,13 +140,6 @@ fact AlertIfOutsideGeofence{
 fact NoCommunicationTypeIfTrackingDeviceOff {
 	all t1: TrackingDevice | t1.status = Off implies ran[t1.towerCommunication] = None 
 }
-
-//English - If a vehicle engine status is off, so is tracking device
-fact NoCommunicationTypeIfTrackingDeviceOff {
-	all t1: TrackingDevice, veh: Vehicle |  veh.engine.status = Off implies t1.status = Off
-}
-//if a location is inside the geofence
--- Geo A B C D, E F G H
 
 //English - If a vehicle engine status is off, so is tracking device
 fact VehicleEngineStatusOffTrackingDeviceOff {
@@ -248,10 +241,13 @@ fact SameCellTowerInTrackingDevice{
 	all t: TrackingDevice, c: CellTower | c in dom[t.towerCommunication] implies c in dom[t.towerStrength]
 }
 
-//English - Each geofence of a tracking device must have at most 4 Locations
-fact GeofenceDefinition{
-	--unsure if this works
-	--all t: TrackingDevice | #t.geofences = 4
+//English - All the cell towers that have established a connection are located within the map.
+fact allCommunicatingCellTowersInMap{
+	all cell: CellTower | cell.location in ran[Map.map]
+}
+
+fact OneMapExists{
+	one Map
 }
 
 /**Scenarios**/
@@ -391,9 +387,7 @@ pred ChangeWeatherOfLocation[loc: Location, we: Weather]{
 } run ChangeWeatherOfLocation for 7 expect 1
 
 
-fact allCommunicatingCellTowersInMap{
-	all cell: CellTower | cell.location in ran[Map.map]
-}
+
 
 //English - A function that changes the status of the tracking device
 pred ChangeStatusOfDevice[dev: TrackingDevice, veh: Vehicle]{
