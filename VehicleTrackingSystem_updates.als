@@ -213,22 +213,9 @@ fact GeofenceLocationSameWeather{
 
 //English - 
 fact ActiveGeofencePreviousLocationNotLastLocation {
---	all t: TrackingDevice | #t.activeLocation > 1 
-	--			implies (prev[t.activeLocation] != last[t.activeLocation])
-	--go through and check if it has a next and the next is not equal to the current
-
-	--for testing
-	//#TrackingDevice.activeLocation = 4
-	--all t: TrackingDevice | #t.activeLocation > 1 
-			--	implies (prev[t.activeLocation] != last[t.activeLocation])
-	--go through and check if it has a next and the next is not equal to the current
-	--no duplicates activeLocation.Location
-	--all i: Int, t: TrackingDevice | i < #activeLocation - 1 
-				--=> t.activeLocation[i] != t.activeLocation[i+1]
-	--all t: TrackingDevice | last[t.activeLocation] = first[t.activeLocation]
-	
-	--all i: Int, t: TrackingDevice | (i < #t.activeLocation - 1)
-			--					implies t.activeLocation[i] != t.activeLocation[i-1]
+	all s: TrackingDevice |
+	      no i: ran[s.activeLocation] - last[s.activeLocation] |
+	         i = last[s.activeLocation] implies #s.activeLocation <= 1 or i != prev[s.activeLocation, last[s.activeLocation]]
 }
 
 //English - Each tracking device can only have one tower strength to a cell tower
@@ -414,7 +401,6 @@ pred AlertWithGeofence[track: TrackingDevice, loc: Location, alert: Alert]{
 	track.activeLocation != track'.activeLocation'
 	track.experience = track'.experience'
 	track.alertType != track'.alertType'
-	track.geofences = track'.geofences'
 
 } run AlertWithGeofence for 7 expect 1
 
@@ -434,6 +420,33 @@ pred ChangeWeatherOfLocation[loc: Location, we: Weather]{
 
 } run ChangeWeatherOfLocation for 5 expect 1
 
+/*Operation 5
+English - A function that moves a tracking devices outside of a geofence*/
+pred TrackingDeviceLeaveGeofence[track: TrackingDevice, l: Location] {
+	//preconditions
+	some track.activeLocation
+	some l & (dom[Map.map] + ran[Map.map])
+	l not in ran[track.geofences]
+	track.alertType = Inside
+	l != last[track.activeLocation]
+
+	//post conditions
+	activeLocation' = activeLocation + (track-> afterLastIdx[track.activeLocation] -> l)
+	alertType' = alertType - track->Inside + track->Outside
+	last[track'.activeLocation'] = l
+
+	//frameconditions
+	track.alertType != track'.alertType'
+	track.status = track'.status'
+	track.towerCommunication = track'.towerCommunication'
+	track.towerStrength = track'.towerStrength'
+	track.activeLocation != track'.activeLocation'
+	track.experience = track'.experience'
+	track.alertType != track'.alertType'
+	track.geofences = track'.geofences'
+	
+
+} run TrackingDeviceLeaveGeofence for 5 expect 1
 
 /**Functions**/
 fun lastLocation: Location { last[TrackingDevice.activeLocation] }
